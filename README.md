@@ -86,6 +86,12 @@ Until nginx or Cloudflare is intentionally configured for this project, the app 
 http://<server-ip>:8000/
 ```
 
+The current preferred public URL uses the existing Cloudflare Tunnel:
+
+```text
+https://cocktails.chsfinds.com/
+```
+
 ## How Future Agents Should Start
 
 Future Codex sessions should begin by reading:

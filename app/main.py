@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from fastapi import Depends, FastAPI, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
@@ -41,6 +41,21 @@ def home(request: Request, q: str = "", creator: str = "", db: Session = Depends
             "results": [_decorate_result(row) for row in results],
         },
     )
+
+
+@app.head("/")
+def home_head():
+    return Response(status_code=200)
+
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
+
+@app.head("/healthz")
+def healthz_head():
+    return Response(status_code=200)
 
 
 @app.get("/creators")

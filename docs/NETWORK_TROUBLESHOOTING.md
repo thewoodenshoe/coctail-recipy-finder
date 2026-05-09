@@ -20,10 +20,16 @@ The WAN/public IP observed from the Ubuntu server:
 170.52.149.139
 ```
 
-Expected public URL when router forwarding works:
+Direct public URL when router forwarding works:
 
 ```text
 http://170.52.149.139:8000/
+```
+
+Cloudflare Tunnel URL, which does not require inbound ISP/router forwarding:
+
+```text
+https://cocktails.chsfinds.com/
 ```
 
 ## Required Direct-Port Setup
@@ -106,3 +112,50 @@ Correct next options:
 4. If direct forwarding remains unreliable, use a Cloudflare Tunnel or a proper nginx/Cloudflare/domain setup for this project.
 
 The CHS project already chose Cloudflare Tunnel specifically to avoid direct NAT/port-forward fragility.
+
+## Cloudflare Tunnel Setup
+
+The existing CHS Finds tunnel is named `chsfinds`:
+
+```text
+e83116e2-f530-460c-a729-0587ca40dc33
+```
+
+The tunnel config is managed on Ubuntu at:
+
+```text
+/etc/cloudflared/config.yml
+```
+
+Current relevant ingress:
+
+```yaml
+ingress:
+  - hostname: chsfinds.com
+    service: http://localhost:80
+  - hostname: www.chsfinds.com
+    service: http://localhost:80
+  - hostname: cocktails.chsfinds.com
+    service: http://localhost:8000
+  - service: http_status:404
+```
+
+The DNS route was created with:
+
+```bash
+cloudflared tunnel route dns chsfinds cocktails.chsfinds.com
+```
+
+Then `cloudflared` was restarted:
+
+```bash
+sudo systemctl restart cloudflared
+```
+
+If local DNS says `cocktails.chsfinds.com` does not exist immediately after setup, check Cloudflare directly:
+
+```bash
+dig @1.1.1.1 cocktails.chsfinds.com A
+```
+
+Local router or OS DNS caches may lag even after Cloudflare has the record.

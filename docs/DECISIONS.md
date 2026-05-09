@@ -88,3 +88,17 @@ Consequences:
 - Google Home/router forwarding must use external TCP `8000` to internal `192.168.86.250:8000`.
 - If public `8000` fails while LAN `8000` works, troubleshoot router/NAT/upstream behavior before changing app ports.
 - Longer term, Cloudflare Tunnel or nginx/Cloudflare is the more robust public exposure path.
+
+## 0007 - Expose MVP Through Existing Cloudflare Tunnel
+
+Status: Accepted
+
+Decision: Expose this app at `https://cocktails.chsfinds.com/` through the existing `chsfinds` Cloudflare Tunnel, routing to `http://localhost:8000` on Ubuntu.
+
+Reasoning: The ISP/router path appears unreliable for direct inbound forwarding. CHS Finds already solved this class of problem with Cloudflare Tunnel, which uses outbound connectivity from Ubuntu and does not require public inbound port forwarding.
+
+Consequences:
+
+- The direct LAN URL remains `http://192.168.86.250:8000/`.
+- The preferred public URL is `https://cocktails.chsfinds.com/`.
+- The tunnel config in `/etc/cloudflared/config.yml` is now shared by CHS Finds and this app, so future edits must preserve both hostnames.

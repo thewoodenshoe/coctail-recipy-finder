@@ -53,6 +53,12 @@ Expected URL shape:
 http://<server-ip>:8000/
 ```
 
+Preferred public URL through Cloudflare Tunnel:
+
+```text
+https://cocktails.chsfinds.com/
+```
+
 Current smoke-test page:
 
 ```text
@@ -76,6 +82,8 @@ For internet access from outside the LAN, configure Google Home / router port fo
 ```text
 External TCP 8000 -> 192.168.86.250 TCP 8000
 ```
+
+If ISP/router forwarding fails, use the Cloudflare Tunnel URL instead. This is the same class of solution used by CHS Finds to avoid NAT/port-forward fragility.
 
 Current Ubuntu firewall state for this project:
 
