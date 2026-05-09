@@ -29,6 +29,12 @@ Deployment templates live in `deploy/`:
 - `deploy/cocktail-index-sync.timer`
 - `deploy/README.md`
 
+Ubuntu may need the venv package before `.venv` can be created:
+
+```bash
+sudo apt-get install -y python3.12-venv
+```
+
 ## Direct IP Access
 
 Direct IP access is acceptable for MVP.

@@ -4,6 +4,13 @@ These steps deploy the MVP on the Ubuntu host without touching CHS Finds nginx o
 
 ## One-Time Setup
 
+If Python venv support is missing, install it first:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3.12-venv
+```
+
 ```bash
 cd ~/projects/coctail-recipy-finder
 git pull --ff-only
