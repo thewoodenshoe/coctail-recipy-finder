@@ -38,6 +38,18 @@ Expected URL shape:
 http://<server-ip>:8000/
 ```
 
+Current smoke-test page:
+
+```text
+http://<server-ip>:8000/hello_world.html
+```
+
+A compatibility alias also exists at:
+
+```text
+http://<server-ip>:8000/hell_world.html
+```
+
 Current Ubuntu LAN IP observed during setup:
 
 ```text
@@ -48,6 +60,18 @@ For internet access from outside the LAN, configure Google Home / router port fo
 
 ```text
 External TCP 8000 -> 192.168.86.250 TCP 8000
+```
+
+Current Ubuntu firewall state for this project:
+
+```bash
+sudo ufw allow 8000/tcp
+```
+
+Rollback if the direct-port MVP is removed:
+
+```bash
+sudo ufw delete allow 8000/tcp
 ```
 
 Recommended shape for the direct-port MVP:
