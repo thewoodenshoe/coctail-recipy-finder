@@ -39,6 +39,18 @@ Index:
 
 Search should return the original Instagram URL with every result.
 
+## Browser-Assisted Instagram Text Ingestion
+
+The production ingestion path may use an authorized Playwright browser session on Ubuntu.
+
+- Store session state outside the repo at `INSTAGRAM_SESSION_STATE_PATH`.
+- Do not store Instagram credentials in the repo or in documentation.
+- Do not download videos or media; block image, media, and font resources where practical.
+- Store fetched visible post text as raw source material before parsing.
+- Treat recipe extraction and search indexing as derived data that can be rebuilt locally.
+
+Backfill discovers visible `/p/...` and `/reel/...` URLs from each configured profile and fetches text for each post. Incremental sync checks a smaller recent window and stops after enough known posts are seen.
+
 ## Later Ingestion Options
 
 Later options can include:
@@ -62,7 +74,7 @@ python -m app.cli import-caption --creator HANDLE --url URL --caption-file FILE
 
 `sync-creators` reads `config/creators.yml`, upserts creators into the database, detects newly configured creators, and chooses backfill or incremental sync.
 
-Automated public Instagram scraping is intentionally not implemented. `app/ingestion/instagram_public.py` is a stubbed provider that records a clear status message instead of depending on brittle or abusive scraping.
+Unauthenticated public Instagram scraping is intentionally not implemented. `app/ingestion/instagram_public.py` is a stubbed provider that records a clear status message instead of depending on brittle or abusive scraping. Use `--provider instagram-browser` after creating an authorized browser session.
 
 ## Explicit Non-Goals
 

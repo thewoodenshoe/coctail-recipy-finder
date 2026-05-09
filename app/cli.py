@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.db import init_database, session_scope
-from app.services import import_post, sync_creators_from_config
+from app.services import import_post, provider_for_name, reparse_posts, sync_creators_from_config
 
 
 def main() -> None:
@@ -13,7 +13,13 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("init-db", help="Initialize database schema and search index")
-    subparsers.add_parser("sync-creators", help="Sync creators from config/creators.yml")
+    sync_parser = subparsers.add_parser("sync-creators", help="Sync creators from config/creators.yml")
+    sync_parser.add_argument("--provider", default="public", choices=["public", "instagram-public", "browser", "instagram-browser"])
+
+    auth_parser = subparsers.add_parser("instagram-auth", help="Create an authorized Instagram browser session outside the repo")
+    auth_parser.add_argument("--headless", action="store_true")
+
+    subparsers.add_parser("reparse-posts", help="Rebuild extracted recipes and search index from stored raw text")
 
     import_parser = subparsers.add_parser("import-caption", help="Import one pasted caption")
     import_parser.add_argument("--creator", required=True)
@@ -31,10 +37,25 @@ def main() -> None:
     if args.command == "sync-creators":
         init_database()
         with session_scope() as session:
-            actions = sync_creators_from_config(session, settings.creator_config_path)
+            provider = provider_for_name(args.provider)
+            actions = sync_creators_from_config(session, settings.creator_config_path, provider=provider)
             for action in actions:
                 detail = f" - {action.message}" if action.message else ""
                 print(f"{action.handle}: {action.action} -> {action.status}{detail}")
+        return
+
+    if args.command == "instagram-auth":
+        from app.ingestion.instagram_browser import save_instagram_session
+
+        save_instagram_session(settings.instagram_session_state_path, headless=args.headless)
+        print(f"Instagram session saved to {settings.instagram_session_state_path}")
+        return
+
+    if args.command == "reparse-posts":
+        init_database()
+        with session_scope() as session:
+            count = reparse_posts(session)
+            print(f"Reparsed {count} posts")
         return
 
     if args.command == "import-caption":

@@ -16,9 +16,25 @@ cd ~/projects/coctail-recipy-finder
 git pull --ff-only
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+.venv/bin/playwright install chromium
 mkdir -p data
 DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db .venv/bin/python -m app.cli init-db
-DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db .venv/bin/python -m app.cli sync-creators
+```
+
+Create the Instagram browser session outside the repo. Do not paste credentials into chat and do not commit the session file:
+
+```bash
+DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db \
+INSTAGRAM_SESSION_STATE_PATH=/home/ubuntu/.config/cocktail-index/instagram-storage-state.json \
+.venv/bin/python -m app.cli instagram-auth
+```
+
+Then run the initial text-only load:
+
+```bash
+DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db \
+INSTAGRAM_SESSION_STATE_PATH=/home/ubuntu/.config/cocktail-index/instagram-storage-state.json \
+.venv/bin/python -m app.cli sync-creators --provider instagram-browser
 ```
 
 ## Direct-Port Smoke Run
@@ -48,6 +64,7 @@ sudo systemctl enable --now cocktail-index-sync.timer
 systemctl status cocktail-index.service --no-pager
 systemctl list-timers cocktail-index-sync.timer --no-pager
 curl -fsS http://127.0.0.1:8000/
+curl -fsS 'http://127.0.0.1:8000/?q=gin'
 ```
 
 ## Rollback

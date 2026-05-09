@@ -11,6 +11,7 @@ from app.models import Creator
 class IngestedPost:
     source_url: str
     caption_text: str
+    raw_text: str | None = None
     external_post_id: str | None = None
     posted_at: datetime | None = None
 

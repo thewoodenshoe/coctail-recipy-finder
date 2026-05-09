@@ -21,8 +21,13 @@ BASE_SPIRITS = [
 ]
 
 MEASUREMENT_RE = re.compile(
-    r"\b(\d+([./]\d+)?|one|two|three|four|five|six|half|¼|½|¾)\s*"
+    r"(?<![A-Za-z0-9])(\d+([./]\d+)?|\.\d+|one|two|three|four|five|six|half|¼|½|¾)\s*"
     r"(oz|ounce|ounces|ml|dash|dashes|barspoon|tsp|tbsp|part|parts)\b",
+    re.IGNORECASE,
+)
+COUNT_INGREDIENT_RE = re.compile(
+    r"(?<![A-Za-z0-9])(\d+|one|two|three|four|five|six)\s+"
+    r"(egg white|egg|lemon peel|orange peel|lime wedge|mint sprig)\b",
     re.IGNORECASE,
 )
 METHOD_RE = re.compile(r"\b(shaken|shake|stirred|stir|built|build|blended|blend|muddled|muddle)\b", re.IGNORECASE)
@@ -103,7 +108,7 @@ def _extract_base_spirit(lower_text: str) -> str | None:
 def _extract_ingredients(lines: list[str]) -> list[str]:
     ingredients: list[str] = []
     for line in lines:
-        if MEASUREMENT_RE.search(line):
+        if MEASUREMENT_RE.search(line) or COUNT_INGREDIENT_RE.search(line):
             ingredients.append(line)
     return ingredients
 

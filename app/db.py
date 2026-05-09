@@ -33,7 +33,26 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 
 def init_database(db_engine: Engine = engine) -> None:
     Base.metadata.create_all(bind=db_engine)
+    migrate_sqlite_schema(db_engine)
     create_search_index(db_engine)
+
+
+def migrate_sqlite_schema(db_engine: Engine) -> None:
+    if db_engine.dialect.name != "sqlite":
+        return
+    with db_engine.begin() as connection:
+        columns = {
+            row["name"]
+            for row in connection.execute(text("PRAGMA table_info(posts)")).mappings().all()
+        }
+        additions = {
+            "raw_text": "ALTER TABLE posts ADD COLUMN raw_text TEXT",
+            "raw_fetched_at": "ALTER TABLE posts ADD COLUMN raw_fetched_at DATETIME",
+            "last_seen_at": "ALTER TABLE posts ADD COLUMN last_seen_at DATETIME",
+        }
+        for column, statement in additions.items():
+            if column not in columns:
+                connection.execute(text(statement))
 
 
 def create_search_index(db_engine: Engine) -> None:

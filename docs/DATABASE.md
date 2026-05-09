@@ -39,6 +39,9 @@ Suggested columns:
 - `instagram_url`
 - `normalized_url`
 - `caption_text`
+- `raw_text`
+- `raw_fetched_at`
+- `last_seen_at`
 - `source_type`
 - `notes`
 - `created_at`
@@ -93,7 +96,7 @@ For MVP, app-managed updates are simpler and easier to reason about.
 
 ## Data Principles
 
-- Preserve raw caption text.
+- Preserve raw fetched text separately from extracted recipe fields.
 - Store extracted fields separately.
 - Store normalized URLs for deduplication.
 - Do not store media files.

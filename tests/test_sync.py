@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.ingestion.base import IngestionResult
+from app.ingestion.base import IngestedPost
 from app.models import Creator
-from app.services import sync_creators_from_config, sync_decision
+from app.services import reparse_posts, sync_creators_from_config, sync_decision, upsert_post
 
 
 class FailingProvider:
@@ -75,3 +76,29 @@ def test_sync_records_failures_without_crashing(db_session, tmp_path: Path):
     assert by_handle["oldcreator"].action == "incremental"
     assert by_handle["inactivecreator"].action == "skip"
     assert by_handle["badcreator"].status == "failed"
+
+
+def test_upsert_post_preserves_raw_text_and_reparse_updates_search(db_session):
+    creator = Creator(
+        handle="notjustabartender",
+        profile_url="https://www.instagram.com/notjustabartender/",
+        active=True,
+    )
+    db_session.add(creator)
+    db_session.flush()
+
+    post = upsert_post(
+        db_session,
+        creator,
+        IngestedPost(
+            source_url="https://www.instagram.com/p/DXnYlmJjk48/",
+            caption_text="PINK PONY CLUB\n1.5oz | 45ml gin",
+            raw_text="raw page text\nPINK PONY CLUB\n1.5oz | 45ml gin",
+        ),
+    )
+    db_session.commit()
+
+    assert post.raw_text.startswith("raw page text")
+    assert post.raw_fetched_at is not None
+    assert post.last_seen_at is not None
+    assert reparse_posts(db_session) == 1

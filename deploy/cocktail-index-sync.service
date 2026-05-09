@@ -9,4 +9,5 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/projects/coctail-recipy-finder
 Environment=APP_ENV=production
 Environment=DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db
-ExecStart=/home/ubuntu/projects/coctail-recipy-finder/.venv/bin/python -m app.cli sync-creators
+Environment=INSTAGRAM_SESSION_STATE_PATH=/home/ubuntu/.config/cocktail-index/instagram-storage-state.json
+ExecStart=/home/ubuntu/projects/coctail-recipy-finder/.venv/bin/python -m app.cli sync-creators --provider instagram-browser

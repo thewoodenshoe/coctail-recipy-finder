@@ -27,6 +27,17 @@ def content_hash(caption_text: str) -> str:
     return hashlib.sha256(caption_text.encode("utf-8")).hexdigest()
 
 
+def provider_for_name(name: str | None) -> IngestionProvider:
+    provider_name = (name or "public").strip().lower()
+    if provider_name in {"public", "instagram-public"}:
+        return InstagramPublicProvider()
+    if provider_name in {"browser", "instagram-browser"}:
+        from app.ingestion.instagram_browser import InstagramBrowserProvider
+
+        return InstagramBrowserProvider()
+    raise ValueError(f"Unknown ingestion provider: {name}")
+
+
 def upsert_creator(session: Session, config: CreatorConfig) -> tuple[Creator, bool]:
     handle = normalize_handle(config.handle)
     creator = session.scalar(select(Creator).where(Creator.handle == handle))
@@ -69,20 +80,22 @@ def import_post(session: Session, creator_handle: str, source_url: str, caption_
         session.add(creator)
         session.flush()
 
-    ingested = IngestedPost(source_url=source_url, caption_text=caption_text)
+    ingested = IngestedPost(source_url=source_url, caption_text=caption_text, raw_text=caption_text)
     return upsert_post(session, creator, ingested)
 
 
 def upsert_post(session: Session, creator: Creator, ingested: IngestedPost) -> Post:
     source_url = ingested.source_url.strip()
     caption_text = ingested.caption_text.strip()
+    raw_text = (ingested.raw_text or ingested.caption_text).strip()
     if not source_url:
         raise ValueError("Source URL is required")
     if not caption_text:
         raise ValueError("Caption text is required")
 
     post = session.scalar(select(Post).where(Post.source_url == source_url))
-    digest = content_hash(caption_text)
+    digest = content_hash(raw_text or caption_text)
+    now = datetime.now(timezone.utc)
     if post is None:
         post = Post(
             creator_id=creator.id,
@@ -90,17 +103,26 @@ def upsert_post(session: Session, creator: Creator, ingested: IngestedPost) -> P
             source_url=source_url,
             external_post_id=ingested.external_post_id,
             caption_text=caption_text,
+            raw_text=raw_text,
             posted_at=ingested.posted_at,
+            raw_fetched_at=now,
+            last_seen_at=now,
             content_hash=digest,
         )
         session.add(post)
         session.flush()
     elif post.content_hash != digest:
         post.caption_text = caption_text
+        post.raw_text = raw_text
         post.external_post_id = ingested.external_post_id or post.external_post_id
         post.posted_at = ingested.posted_at or post.posted_at
         post.content_hash = digest
-        post.updated_at = datetime.now(timezone.utc)
+        post.raw_fetched_at = now
+        post.last_seen_at = now
+        post.updated_at = now
+        session.flush()
+    else:
+        post.last_seen_at = now
         session.flush()
 
     recipe_data = extract_recipe(caption_text)
@@ -117,6 +139,23 @@ def upsert_post(session: Session, creator: Creator, ingested: IngestedPost) -> P
     session.refresh(post)
     update_post_search_index(session, post)
     return post
+
+
+def reparse_posts(session: Session) -> int:
+    posts = session.scalars(select(Post)).all()
+    for post in posts:
+        text = post.raw_text or post.caption_text
+        recipe_data = extract_recipe(text)
+        if post.recipe is None:
+            post.recipe = Recipe(post_id=post.id, ingredients_json="[]")
+        post.recipe.drink_name = recipe_data.drink_name
+        post.recipe.base_spirit = recipe_data.base_spirit
+        post.recipe.ingredients_json = recipe_data.ingredients_json()
+        post.recipe.method = recipe_data.method
+        post.recipe.garnish = recipe_data.garnish
+        post.recipe.confidence_score = recipe_data.confidence_score
+        update_post_search_index(session, post)
+    return len(posts)
 
 
 def sync_creators_from_config(
