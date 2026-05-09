@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Cocktail Recipe Finder sync nightly
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+Persistent=true
+Unit=cocktail-index-sync.service
+
+[Install]
+WantedBy=timers.target

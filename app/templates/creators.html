@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Creators - Cocktail Recipe Finder{% endblock %}
+{% block content %}
+  <section>
+    <h1>Creators</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Handle</th>
+          <th>Status</th>
+          <th>Last sync</th>
+          <th>Backfilled</th>
+          <th>Active</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for creator in creators %}
+          <tr>
+            <td><a href="{{ creator.profile_url }}" target="_blank" rel="noopener noreferrer">@{{ creator.handle }}</a></td>
+            <td>{{ creator.sync_status }}</td>
+            <td>{{ creator.last_sync_at or "never" }}</td>
+            <td>{{ creator.backfill_completed_at or "no" }}</td>
+            <td>{{ "yes" if creator.active else "no" }}</td>
+            <td>{{ creator.sync_error or "" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

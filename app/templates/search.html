@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Search - Cocktail Recipe Finder{% endblock %}
+{% block content %}
+  <section class="toolbar">
+    <form method="get" action="/" class="search-form">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search gin, mezcal, negroni...">
+      <select name="creator">
+        <option value="">All creators</option>
+        {% for creator in creators %}
+          <option value="{{ creator.handle }}" {% if creator_filter == creator.handle %}selected{% endif %}>@{{ creator.handle }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Search</button>
+    </form>
+  </section>
+
+  <section>
+    <div class="section-heading">
+      <h1>Recipe Index</h1>
+      <a class="button-secondary" href="/import">Import caption</a>
+    </div>
+    {% if results %}
+      <div class="results">
+        {% for result in results %}
+          <article class="result-card">
+            <div class="result-meta">@{{ result.creator_handle }}</div>
+            <h2><a href="/posts/{{ result.id }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h2>
+            <div class="tags">
+              {% if result.base_spirit %}<span>{{ result.base_spirit }}</span>{% endif %}
+              {% for ingredient in result.ingredients[:4] %}
+                <span>{{ ingredient }}</span>
+              {% endfor %}
+            </div>
+            <p>{{ result.short_caption }}</p>
+            <a href="{{ result.source_url }}" target="_blank" rel="noopener noreferrer">Original Instagram post</a>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-state">No indexed posts yet. Import a caption or run the sync command.</p>
+    {% endif %}
+  </section>
+{% endblock %}

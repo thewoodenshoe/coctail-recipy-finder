@@ -1,0 +1,12 @@
+[Unit]
+Description=Cocktail Recipe Finder nightly creator sync
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/projects/coctail-recipy-finder
+Environment=APP_ENV=production
+Environment=DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db
+ExecStart=/home/ubuntu/projects/coctail-recipy-finder/.venv/bin/python -m app.cli sync-creators

@@ -18,12 +18,11 @@ The backend should provide:
 Initial server-rendered routes:
 
 - `GET /` - search page.
-- `GET /search?q=...` - search results.
-- `GET /posts/new` - import post form.
-- `POST /posts` - create post from form submission.
+- `GET /?q=...` - search results.
+- `GET /import` - import post form.
+- `POST /import` - create post from form submission.
 - `GET /posts/{post_id}` - post detail page.
 - `GET /creators` - creator list.
-- `GET /creators/{creator_id}` - creator detail and posts.
 
 Optional JSON routes can be added later if needed, but they are not required for the first MVP.
 
@@ -35,6 +34,7 @@ Keep backend logic separated into small services:
 - Post service: validate URLs, create posts, prevent duplicate URLs.
 - Extraction service: parse pasted text into likely recipe fields.
 - Search service: update and query FTS5 index.
+- Sync service: compare `config/creators.yml` to database creators and decide backfill, incremental sync, or skip.
 
 Do not overbuild service layers. These boundaries are for clarity, not enterprise architecture.
 

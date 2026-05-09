@@ -1,0 +1,19 @@
+[Unit]
+Description=Cocktail Recipe Finder web app
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/projects/coctail-recipy-finder
+Environment=APP_ENV=production
+Environment=APP_HOST=0.0.0.0
+Environment=APP_PORT=8000
+Environment=DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db
+ExecStart=/home/ubuntu/projects/coctail-recipy-finder/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

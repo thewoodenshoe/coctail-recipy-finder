@@ -8,6 +8,8 @@ SQLite is enough for a single-owner internal tool and keeps deployment simple.
 
 ## Proposed Tables
 
+The current implementation uses SQLAlchemy models in `app/models.py` and an app-managed SQLite FTS5 table created by `app/db.py`.
+
 ## `creators`
 
 Stores tracked Instagram creators.

@@ -60,3 +60,17 @@ Consequences:
 - Future agents should commit, push, and pull on Ubuntu after each completed change set.
 - Local test data should be treated as disposable.
 - Any real ingestion job must be designed to run safely on Ubuntu.
+
+## 0005 - Stub Public Instagram Provider Until Authorized Path Exists
+
+Status: Accepted
+
+Decision: The initial app ships with a manual ingestion provider and a stubbed public Instagram provider.
+
+Reasoning: Automated public Instagram scraping is brittle and platform-sensitive. The MVP should validate creator registry, manual import, extraction, indexing, search, and deployment before taking on ingestion risk.
+
+Consequences:
+
+- `sync-creators` records backfill/incremental status but does not fetch Instagram posts yet.
+- Manual import is the working content path.
+- Future authorized/API/browser-assisted import can be added behind the existing ingestion interface.

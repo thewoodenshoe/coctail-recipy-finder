@@ -49,6 +49,21 @@ Later options can include:
 - Limited public metadata import.
 - Semi-manual tools that reduce copy/paste.
 
+## Current Implementation
+
+The current working ingestion path is manual caption import.
+
+Available commands:
+
+```bash
+python -m app.cli sync-creators
+python -m app.cli import-caption --creator HANDLE --url URL --caption-file FILE
+```
+
+`sync-creators` reads `config/creators.yml`, upserts creators into the database, detects newly configured creators, and chooses backfill or incremental sync.
+
+Automated public Instagram scraping is intentionally not implemented. `app/ingestion/instagram_public.py` is a stubbed provider that records a clear status message instead of depending on brittle or abusive scraping.
+
 ## Explicit Non-Goals
 
 - Do not download videos.

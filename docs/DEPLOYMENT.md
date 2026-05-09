@@ -22,6 +22,13 @@ Likely deployment:
 - SQLite database stored on the server filesystem.
 - Environment variables configure host, port, app environment, and database path.
 
+Deployment templates live in `deploy/`:
+
+- `deploy/cocktail-index.service`
+- `deploy/cocktail-index-sync.service`
+- `deploy/cocktail-index-sync.timer`
+- `deploy/README.md`
+
 ## Direct IP Access
 
 Direct IP access is acceptable for MVP.

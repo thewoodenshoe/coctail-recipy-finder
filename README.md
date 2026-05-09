@@ -18,24 +18,61 @@ The MVP should stay deliberately simple:
 
 The default implementation direction is FastAPI, SQLite with FTS5, SQLAlchemy, Jinja templates, systemd, and nginx.
 
-## Not Built Yet
+## Running Locally
 
-This repo currently contains documentation and project instructions only.
+Create a virtual environment and install dependencies:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+Initialize the local database and sync the configured creators:
+
+```bash
+.venv/bin/python -m app.cli init-db
+.venv/bin/python -m app.cli sync-creators
+```
+
+Run the app:
+
+```bash
+.venv/bin/uvicorn app.main:app --reload
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000/
+```
+
+Run tests:
+
+```bash
+.venv/bin/pytest
+```
+
+## Current Features
+
+- Creator registry in `config/creators.yml`.
+- SQLite schema for creators, posts, and extracted recipes.
+- SQLite FTS5 search index.
+- Manual caption import through the web UI and CLI.
+- Deterministic recipe extraction from pasted caption text.
+- Creator sync command that detects new configured creators.
+- Stubbed public Instagram ingestion interface with clear limitations.
+- systemd service/timer templates for Ubuntu deployment.
+
+## Not Built Yet
 
 The following are intentionally not implemented yet:
 
-- Application scaffold.
-- Python dependencies.
-- Database schema or migrations.
-- Frontend templates.
-- Backend routes.
-- Instagram scraping.
-- Server deployment.
+- Real automated Instagram scraping.
 - Authentication.
-- Background jobs.
 - AI extraction pipeline.
+- nginx or Cloudflare integration for this project.
 
-Do not treat this absence as a gap to fill immediately. The first goal is to give future AI sessions enough context to build the MVP cleanly.
+Do not treat the lack of automated Instagram scraping as a bug. The working MVP path is manual caption import plus a clean ingestion interface for later authorized/API/browser-assisted import.
 
 ## Current Network Assumption
 
@@ -60,3 +97,10 @@ Future Codex sessions should begin by reading:
 5. `tasks/NEXT_STEPS.md`
 
 Before implementation, summarize the current assumptions and confirm only the choices that materially affect the build. Preserve the product goal, but challenge brittle implementation details when they would create real risk or unnecessary complexity.
+
+For app work, run:
+
+```bash
+.venv/bin/pytest
+.venv/bin/python -m app.cli sync-creators
+```
