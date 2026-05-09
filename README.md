@@ -37,6 +37,18 @@ The following are intentionally not implemented yet:
 
 Do not treat this absence as a gap to fill immediately. The first goal is to give future AI sessions enough context to build the MVP cleanly.
 
+## Current Network Assumption
+
+The Ubuntu server is the production host for this project. Local development and unit tests can run on the developer machine, but production data, ingestion runs, and any future Instagram-related collection work should happen on Ubuntu.
+
+For the early direct-IP MVP, use TCP port `8000` for this project. Do not use ports already occupied by the existing CHS Finds/CHS Spots setup, especially `80`, `443`, `3000`, `3001`, or `3456`.
+
+Until nginx or Cloudflare is intentionally configured for this project, the app should be reachable as:
+
+```text
+http://<server-ip>:8000/
+```
+
 ## How Future Agents Should Start
 
 Future Codex sessions should begin by reading:

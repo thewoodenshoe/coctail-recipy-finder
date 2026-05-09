@@ -28,7 +28,8 @@ Keep `.env.example` safe and placeholder-only.
 
 If deployed on a public IP:
 
-- Bind the app to localhost behind nginx.
+- For the temporary direct-IP MVP, bind the app to `0.0.0.0:8000` only when intentionally testing public access.
+- Once nginx is introduced, bind the app to localhost behind nginx.
 - Use a firewall.
 - Avoid exposing debug mode.
 - Avoid exposing database files.
@@ -44,6 +45,7 @@ Recommended MVP hardening:
 - URL validation for Instagram links.
 - Escape user-provided text in templates.
 - Log operational errors without logging secrets.
+- Keep direct port exposure limited to the MVP test period.
 
 ## Scraping And Platform Risk
 

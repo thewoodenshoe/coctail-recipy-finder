@@ -16,11 +16,27 @@ The likely MVP deployment shape is:
 
 Direct IP access is acceptable for the MVP. That does not mean the server should be wide open.
 
+For the early MVP, this project should use TCP port `8000` directly:
+
+```text
+http://<server-ip>:8000/
+```
+
+Do not configure this project on nginx, Cloudflare, ports `80`/`443`, or the existing CHS Finds/CHS Spots ports unless the product owner explicitly asks for that later.
+
+Known ports to avoid on the Ubuntu host:
+
+- `80` and `443`: nginx / Cloudflare-facing CHS Finds entrypoints.
+- `3000`: CHS Spots main app.
+- `3001`: Umami.
+- `3456`: CHS Spots admin.
+- `3030`, `8080`, `8096`: already occupied on the host.
+
 Reasonable MVP hardening includes:
 
 - App bound to `127.0.0.1` when behind nginx.
-- nginx exposed on HTTP.
-- Firewall allowing only needed ports.
+- App bound to `0.0.0.0` only when intentionally testing direct `ip:8000` access.
+- Firewall allowing only needed ports, currently SSH and TCP `8000` for the direct-port MVP.
 - Clear file ownership for app and database files.
 - No secrets committed to git.
 
@@ -33,7 +49,7 @@ Before applying firewall, nginx, or systemd changes, document:
 - Why it is needed.
 - How to roll it back.
 
-Do not connect to the Ubuntu server unless the product owner asks for deployment work.
+The product owner has approved Ubuntu sync for this project. Do not make server configuration changes unless the current task requires them.
 
 ## Git And Server Sync Workflow
 
@@ -49,6 +65,12 @@ After each completed change set, future agents should:
 Do this after completed, coherent changes, not after every individual file edit. Shipping half-finished edits to the server is a bad operational habit.
 
 For the first server sync, if the repo does not exist under the server projects directory, clone it from the configured git remote instead of running `git pull`.
+
+## Sudo Handling
+
+If sudo is required, ask the product owner for a temporary sudo password and continue after it is provided. Never store the password in the repo or write it into documentation.
+
+Use sudo only for operations that actually need it, such as firewall, nginx, systemd, package installation, or privileged file ownership changes.
 
 ## Future HTTPS
 

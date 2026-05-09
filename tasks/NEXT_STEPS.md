@@ -4,12 +4,13 @@
 
 1. Confirm whether the first application build should be local-only or deployment-ready from the beginning.
 2. Decide whether MVP public access needs basic protection if deployed by direct IP.
-3. Scaffold the FastAPI app without implementing scraping.
-4. Create the initial SQLite schema and models.
-5. Implement manual post ingestion.
-6. Implement basic extraction and FTS5 search.
-7. Add focused tests for URL validation, extraction, deduplication, and search.
-8. After each completed change set, commit, push, and sync the Ubuntu server copy with `ssh ubuntu`, cloning under `projects` first if needed.
+3. Verify the direct static smoke page on Ubuntu port `8000`.
+4. Scaffold the FastAPI app without implementing scraping.
+5. Create the initial SQLite schema and models.
+6. Implement manual post ingestion.
+7. Implement basic extraction and FTS5 search.
+8. Add focused tests for URL validation, extraction, deduplication, and search.
+9. After each completed change set, commit, push, and sync the Ubuntu server copy with `ssh ubuntu`, cloning under `projects` first if needed.
 
 ## Recommended Next Codex Prompt
 
@@ -22,7 +23,9 @@ Read AI_CONTEXT.md, instructions/*.md, docs/ARCHITECTURE.md, docs/BACKEND.md, do
 
 Do not implement Instagram scraping.
 Do not deploy.
-Do not connect to the Ubuntu server.
+Do not configure nginx, Cloudflare, systemd, or firewall unless explicitly requested.
 
 Create a minimal maintainable Python project structure for FastAPI + Jinja + SQLAlchemy + SQLite, add placeholder routes/templates only if useful, add basic config loading from environment variables, and add a test setup. Keep it boring and small. Before editing, summarize assumptions and any material tradeoffs.
+
+After verification, commit, push, then run `ssh ubuntu`, `cd ~/projects/coctail-recipy-finder`, and `git pull --ff-only`.
 ```

@@ -37,3 +37,11 @@ Unless a later decision changes this, assume:
 - ORM: SQLAlchemy.
 - Deployment: Ubuntu server, systemd, nginx.
 - Ingestion: manual creator handle, post URL, pasted caption text.
+
+## Production Host Assumption
+
+The Ubuntu server reached with `ssh ubuntu` is the production host. Build and unit-test code locally when useful, then commit, push, and pull the latest repo state on Ubuntu after each completed change set.
+
+Production data and future Instagram-related ingestion should run on Ubuntu, not only on the local development machine.
+
+The direct-IP MVP port for this project is `8000`. Avoid conflicts with the existing CHS Finds/CHS Spots deployment, which already uses nginx/Cloudflare on `80`/`443`, the main app on `3000`, Umami on `3001`, and admin on `3456`.

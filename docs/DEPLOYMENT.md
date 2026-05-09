@@ -10,7 +10,7 @@ Server access may eventually be available through:
 ssh ubuntu
 ```
 
-Do not connect to the server until deployment work is explicitly requested.
+The product owner has approved using this server as the production host for this project. Future agents should still avoid changing nginx, Cloudflare, firewall, or systemd unless the current task requires it.
 
 ## MVP Deployment Shape
 
@@ -26,12 +26,51 @@ Likely deployment:
 
 Direct IP access is acceptable for MVP.
 
-Recommended shape:
+The direct-IP MVP should use this project's reserved TCP port:
 
-- nginx listens on port 80.
-- FastAPI app binds to `127.0.0.1`.
-- Firewall allows SSH and HTTP.
+```text
+8000
+```
+
+Expected URL shape:
+
+```text
+http://<server-ip>:8000/
+```
+
+Current Ubuntu LAN IP observed during setup:
+
+```text
+192.168.86.250
+```
+
+For internet access from outside the LAN, configure Google Home / router port forwarding:
+
+```text
+External TCP 8000 -> 192.168.86.250 TCP 8000
+```
+
+Recommended shape for the direct-port MVP:
+
+- App binds to `0.0.0.0` on port `8000`.
+- nginx remains untouched.
+- Cloudflare remains untouched.
+- Firewall allows SSH and TCP `8000`.
 - Database file is not stored under a public web root.
+
+When this project later moves behind nginx, bind the app to `127.0.0.1` and proxy from nginx. Do not do that yet unless explicitly requested.
+
+## Existing CHS Finds / CHS Spots Deployment
+
+The sibling CHS Finds / CHS Spots setup already uses:
+
+- nginx and Cloudflare-facing traffic on `80` and `443`.
+- Main Next.js app on `3000`.
+- Umami on `3001`.
+- Admin service on `3456`.
+- Additional occupied ports observed on the Ubuntu host: `3030`, `8080`, `8096`.
+
+Do not reuse those ports for this project.
 
 ## Future Domain And HTTPS
 
@@ -66,3 +105,16 @@ After a completed change set is verified locally:
 6. Otherwise, enter the repo and run `git pull`.
 
 This keeps the server copy current without treating incomplete local edits as deployable states.
+
+## Local Vs Ubuntu Work
+
+Use local development for coding and unit tests.
+
+Use Ubuntu for:
+
+- Production serving.
+- Production database files.
+- Real ingestion runs.
+- Any future Instagram-related collection work.
+
+This avoids confusing local test data with production data and keeps the deployed state reproducible from git.

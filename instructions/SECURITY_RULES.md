@@ -13,8 +13,11 @@ Do not commit:
 - Private keys.
 - Production `.env` files.
 - Instagram credentials.
+- Sudo passwords.
 
 Use environment variables for configuration. Keep `.env.example` limited to placeholders.
+
+If a temporary sudo password is provided during an operational task, use it only for that task. Do not persist it anywhere.
 
 ## Public Exposure
 
@@ -28,6 +31,7 @@ Before deployment, consider:
 - Basic rate limiting.
 - Request size limits.
 - Logging that avoids sensitive data.
+- Whether direct port exposure is still needed after nginx or Cloudflare is configured.
 
 ## Instagram And Platform Risk
 
