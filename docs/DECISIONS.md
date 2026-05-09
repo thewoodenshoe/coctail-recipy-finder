@@ -74,3 +74,17 @@ Consequences:
 - `sync-creators` records backfill/incremental status but does not fetch Instagram posts yet.
 - Manual import is the working content path.
 - Future authorized/API/browser-assisted import can be added behind the existing ingestion interface.
+
+## 0006 - Keep Direct-Port MVP On 8000, Not 8080
+
+Status: Accepted
+
+Decision: Keep this project's direct-port MVP on TCP `8000`.
+
+Reasoning: CHS Finds / CHS Spots already has nginx listening on `8080`, and its Cloudflare firewall script explicitly removes broad public `8080` rules. Reusing `8080` would collide with existing host behavior.
+
+Consequences:
+
+- Google Home/router forwarding must use external TCP `8000` to internal `192.168.86.250:8000`.
+- If public `8000` fails while LAN `8000` works, troubleshoot router/NAT/upstream behavior before changing app ports.
+- Longer term, Cloudflare Tunnel or nginx/Cloudflare is the more robust public exposure path.

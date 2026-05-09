@@ -39,6 +39,8 @@ sudo apt-get install -y python3.12-venv
 
 Direct IP access is acceptable for MVP.
 
+See `docs/NETWORK_TROUBLESHOOTING.md` before changing ports, firewall rules, nginx, or Google Home forwarding.
+
 The direct-IP MVP should use this project's reserved TCP port:
 
 ```text
@@ -105,6 +107,7 @@ The sibling CHS Finds / CHS Spots setup already uses:
 - Main Next.js app on `3000`.
 - Umami on `3001`.
 - Admin service on `3456`.
+- nginx also listens on `8080`; do not use `8080` for this project.
 - Additional occupied ports observed on the Ubuntu host: `3030`, `8080`, `8096`.
 
 Do not reuse those ports for this project.

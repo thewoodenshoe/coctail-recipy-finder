@@ -30,7 +30,8 @@ Known ports to avoid on the Ubuntu host:
 - `3000`: CHS Spots main app.
 - `3001`: Umami.
 - `3456`: CHS Spots admin.
-- `3030`, `8080`, `8096`: already occupied on the host.
+- `8080`: nginx / CHS-related listener; do not reuse for this project.
+- `3030`, `8096`: already occupied on the host.
 
 Reasonable MVP hardening includes:
 
@@ -39,6 +40,8 @@ Reasonable MVP hardening includes:
 - Firewall allowing only needed ports, currently SSH and TCP `8000` for the direct-port MVP.
 - Clear file ownership for app and database files.
 - No secrets committed to git.
+
+If public IP access fails while LAN access works, consult `docs/NETWORK_TROUBLESHOOTING.md` before changing server config.
 
 ## Documentation Before Changes
 
