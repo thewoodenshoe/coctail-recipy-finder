@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.config import get_settings
 from app.db import init_database, session_scope
+from app.gold import migrate_legacy_to_gold, rebuild_gold_search_index
 from app.services import import_post, provider_for_name, reparse_posts, sync_creators_from_config
 
 
@@ -22,6 +23,8 @@ def main() -> None:
     auth_parser.add_argument("--headless", action="store_true")
 
     subparsers.add_parser("reparse-posts", help="Rebuild extracted recipes and search index from stored raw text")
+    subparsers.add_parser("migrate-to-gold", help="Copy legacy posts/recipes into raw/extraction/gold tables")
+    subparsers.add_parser("rebuild-gold-search", help="Rebuild the gold recipe FTS index")
 
     import_parser = subparsers.add_parser("import-caption", help="Import one pasted caption")
     import_parser.add_argument("--creator", required=True)
@@ -64,6 +67,25 @@ def main() -> None:
         with session_scope() as session:
             count = reparse_posts(session)
             print(f"Reparsed {count} posts")
+        return
+
+    if args.command == "migrate-to-gold":
+        init_database()
+        with session_scope() as session:
+            counts = migrate_legacy_to_gold(session)
+            print(
+                "Migrated legacy data to gold: "
+                f"{counts['raw_posts']} raw_posts, "
+                f"{counts['recipe_extractions']} recipe_extractions, "
+                f"{counts['gold_recipes']} gold_recipes created"
+            )
+        return
+
+    if args.command == "rebuild-gold-search":
+        init_database()
+        with session_scope() as session:
+            count = rebuild_gold_search_index(session)
+            print(f"Rebuilt gold search index for {count} recipes")
         return
 
     if args.command == "import-caption":

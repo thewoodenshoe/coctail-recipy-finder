@@ -35,6 +35,7 @@ def init_database(db_engine: Engine = engine) -> None:
     Base.metadata.create_all(bind=db_engine)
     migrate_sqlite_schema(db_engine)
     create_search_index(db_engine)
+    create_gold_search_index(db_engine)
 
 
 def migrate_sqlite_schema(db_engine: Engine) -> None:
@@ -81,6 +82,28 @@ def create_search_index(db_engine: Engine) -> None:
                     ingredients,
                     method,
                     tags
+                )
+                """
+            )
+        )
+
+
+def create_gold_search_index(db_engine: Engine) -> None:
+    with db_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE VIRTUAL TABLE IF NOT EXISTS gold_recipe_search_index USING fts5(
+                    gold_recipe_id UNINDEXED,
+                    source_url UNINDEXED,
+                    creator_handle,
+                    drink_title,
+                    drink_title_normalized,
+                    base_spirits,
+                    ingredient_names,
+                    tags,
+                    intro_text,
+                    raw_fallback_text
                 )
                 """
             )
