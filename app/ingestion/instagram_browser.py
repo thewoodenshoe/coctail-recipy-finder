@@ -11,7 +11,9 @@ from app.models import Creator
 
 ABSOLUTE_POST_URL_RE = re.compile(r"https://www\.instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/?")
 RELATIVE_POST_URL_RE = re.compile(r"/(?:p|reel)/[A-Za-z0-9_-]+/?")
-BLOCKED_RESOURCE_TYPES = {"media", "font"}
+BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
+PROFILE_RENDER_WAIT_MS = 5000
+POST_RENDER_WAIT_MS = 4000
 
 
 def save_instagram_session(session_state_path: Path, headless: bool = False) -> None:
@@ -48,9 +50,9 @@ def discover_creator_post_urls(
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(storage_state=str(session_state_path.expanduser()))
-        context.route("**/*", _abort_heavy_resources)
         page = context.new_page()
-        page.goto(profile_url.rstrip("/") + "/", wait_until="domcontentloaded", timeout=45000)
+        page.goto(profile_url.rstrip("/") + "/", wait_until="networkidle", timeout=60000)
+        page.wait_for_timeout(PROFILE_RENDER_WAIT_MS)
         urls = _discover_post_urls_from_page(page, max_posts=limit)
         browser.close()
     if not urls:
@@ -70,14 +72,11 @@ def fetch_instagram_post_text(session_state_path: Path, source_url: str) -> Inge
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(storage_state=str(session_state_path.expanduser()))
-        context.route("**/*", _abort_heavy_resources)
         page = context.new_page()
-        page.goto(source_url, wait_until="domcontentloaded", timeout=45000)
-        page.wait_for_timeout(1200)
+        page.goto(source_url, wait_until="networkidle", timeout=60000)
+        page.wait_for_timeout(POST_RENDER_WAIT_MS)
         raw_text = _clean_page_text(page.locator("body").inner_text(timeout=15000))
         external_post_id = _post_id_from_url(source_url)
-        thumbnail_url = _extract_thumbnail_url(page)
-        local_image_path, image_status, image_error = _capture_post_image(page, external_post_id)
         browser.close()
 
     caption_text = _extract_best_caption(raw_text)
@@ -89,10 +88,7 @@ def fetch_instagram_post_text(session_state_path: Path, source_url: str) -> Inge
         caption_text=caption_text,
         raw_text=raw_text,
         external_post_id=external_post_id,
-        raw_thumbnail_url=thumbnail_url,
-        local_image_path=local_image_path,
-        image_capture_status=image_status,
-        image_capture_error=image_error,
+        image_capture_status="skipped_text_only",
         fetch_seconds=elapsed,
     )
 
@@ -131,10 +127,10 @@ class InstagramBrowserProvider:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             context = browser.new_context(storage_state=str(self.session_state_path))
-            context.route("**/*", _abort_heavy_resources)
             page = context.new_page()
             profile_url = creator.profile_url.rstrip("/") + "/"
-            page.goto(profile_url, wait_until="domcontentloaded", timeout=45000)
+            page.goto(profile_url, wait_until="networkidle", timeout=60000)
+            page.wait_for_timeout(PROFILE_RENDER_WAIT_MS)
             urls = _discover_post_urls_from_page(page, max_posts=max_posts)
             if not urls:
                 browser.close()
@@ -146,14 +142,10 @@ class InstagramBrowserProvider:
             for url in urls:
                 try:
                     post_page = context.new_page()
-                    post_page.goto(url, wait_until="domcontentloaded", timeout=45000)
-                    post_page.wait_for_timeout(1200)
+                    post_page.goto(url, wait_until="networkidle", timeout=60000)
+                    post_page.wait_for_timeout(POST_RENDER_WAIT_MS)
                     raw_text = _clean_page_text(post_page.locator("body").inner_text(timeout=15000))
                     external_post_id = _post_id_from_url(url)
-                    thumbnail_url = _extract_thumbnail_url(post_page)
-                    local_image_path, image_status, image_error = _capture_post_image(
-                        post_page, external_post_id
-                    )
                     post_page.close()
                 except PlaywrightTimeoutError:
                     continue
@@ -167,10 +159,7 @@ class InstagramBrowserProvider:
                     caption_text=caption_text,
                     raw_text=raw_text,
                     external_post_id=external_post_id,
-                    raw_thumbnail_url=thumbnail_url,
-                    local_image_path=local_image_path,
-                    image_capture_status=image_status,
-                    image_capture_error=image_error,
+                    image_capture_status="skipped_text_only",
                 )
                 posts.append(ingested)
 
