@@ -55,18 +55,23 @@ Instagram Lite
 def test_post_id_from_instagram_url():
     assert _post_id_from_url("https://www.instagram.com/p/DXnYlmJjk48/") == "DXnYlmJjk48"
     assert _post_id_from_url("https://www.instagram.com/reel/ABC123/") == "ABC123"
+    assert _post_id_from_url("https://www.instagram.com/notjustabartender/reel/ABC123/") == "ABC123"
 
 
 def test_normalize_relative_and_absolute_post_urls():
     urls = _normalize_post_url_candidates(
         [
             "https://www.instagram.com/reel/DXnYlmJjk48/?x=1",
+            "https://www.instagram.com/notjustabartender/reel/CREATOR123/?x=1",
             "/p/ABC123/",
+            "/join_jules/reel/JULES123/",
             "/not-a-post/ABC123/",
         ]
     )
 
     assert urls == [
         "https://www.instagram.com/reel/DXnYlmJjk48/",
+        "https://www.instagram.com/notjustabartender/reel/CREATOR123/",
         "https://www.instagram.com/p/ABC123/",
+        "https://www.instagram.com/join_jules/reel/JULES123/",
     ]

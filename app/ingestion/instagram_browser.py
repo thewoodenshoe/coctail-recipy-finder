@@ -9,8 +9,10 @@ from app.ingestion.base import IngestedPost, IngestionResult
 from app.models import Creator
 
 
-ABSOLUTE_POST_URL_RE = re.compile(r"https://www\.instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/?")
-RELATIVE_POST_URL_RE = re.compile(r"/(?:p|reel)/[A-Za-z0-9_-]+/?")
+ABSOLUTE_POST_URL_RE = re.compile(
+    r"https://www\.instagram\.com/(?:[A-Za-z0-9_.]+/)?(?:p|reel)/[A-Za-z0-9_-]+/?"
+)
+RELATIVE_POST_URL_RE = re.compile(r"/(?:[A-Za-z0-9_.]+/)?(?:p|reel)/[A-Za-z0-9_-]+/?")
 BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
 PROFILE_RENDER_WAIT_MS = 5000
 POST_RENDER_WAIT_MS = 4000
