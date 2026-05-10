@@ -12,9 +12,9 @@ The MVP should stay deliberately simple:
 - Manually add an Instagram post URL.
 - Paste the caption or visible post text.
 - Extract likely recipe fields from the pasted text.
-- Store the post, creator, extracted fields, and searchable text.
-- Search across indexed posts using SQLite FTS5.
-- View search results and post details in a basic web UI.
+- Store raw source text, extraction history, gold recipe records, and searchable text.
+- Search across gold recipes using SQLite FTS5.
+- View search results and gold recipe details in a basic web UI.
 
 The default implementation direction is FastAPI, SQLite with FTS5, SQLAlchemy, Jinja templates, systemd, and nginx.
 
@@ -55,11 +55,12 @@ Run tests:
 ## Current Features
 
 - Creator registry in `config/creators.yml`.
-- SQLite schema for creators, posts, and extracted recipes.
-- SQLite FTS5 search index.
+- SQLite schema for creators, raw posts, recipe extractions, and gold recipes.
+- SQLite FTS5 gold recipe search index.
 - Manual caption import through the web UI and CLI.
 - Deterministic recipe extraction from pasted caption text.
 - Creator sync command that detects new configured creators.
+- Browser-assisted raw text download for authorized Instagram sessions.
 - Stubbed public Instagram ingestion interface with clear limitations.
 - systemd service/timer templates for Ubuntu deployment.
 
@@ -67,7 +68,6 @@ Run tests:
 
 The following are intentionally not implemented yet:
 
-- Real automated Instagram scraping.
 - Authentication.
 - AI extraction pipeline.
 - nginx or Cloudflare integration for this project.

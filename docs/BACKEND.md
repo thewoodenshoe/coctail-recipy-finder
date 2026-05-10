@@ -2,58 +2,42 @@
 
 ## Responsibilities
 
-The backend should provide:
+The backend provides:
 
-- Creator management.
-- Post creation and deduplication.
-- Caption storage.
-- Recipe field extraction.
-- Search indexing.
-- Search result retrieval.
-- Post detail retrieval.
-- Basic validation and error handling.
+- Creator registry visibility.
+- Manual raw post import.
+- Raw post deduplication by source URL.
+- Recipe transformation into extraction history.
+- Gold recipe promotion.
+- Gold recipe search.
+- Gold recipe detail pages.
 
-## Proposed Routes
+## Routes
 
-Initial server-rendered routes:
-
-- `GET /` - search page.
-- `GET /?q=...` - search results.
-- `GET /import` - import post form.
-- `POST /import` - create post from form submission.
-- `GET /posts/{post_id}` - post detail page.
+- `GET /` - gold recipe search page.
+- `GET /?q=...` - gold recipe search results.
+- `GET /import` - manual import form.
+- `POST /import` - create raw post, transform it, redirect to gold detail.
+- `GET /gold/{gold_id}` - gold recipe detail page.
 - `GET /creators` - creator list.
 
-Optional JSON routes can be added later if needed, but they are not required for the first MVP.
+## CLI Commands
+
+- `python -m app.cli init-db`
+- `python -m app.cli clear-data`
+- `python -m app.cli download-raw --creator HANDLE --limit N --parallel N`
+- `python -m app.cli transform-raw [--creator HANDLE]`
+- `python -m app.cli rebuild-gold-search`
+- `python -m app.cli sync-creators`
+- `python -m app.cli import-caption --creator HANDLE --url URL --caption-file FILE`
 
 ## Service Boundaries
 
-Keep backend logic separated into small services:
+- Creator service: normalize handles and upsert configured creators.
+- Ingestion providers: return captured source text and metadata.
+- Raw service: upsert raw source records.
+- Transformation service: create recipe extraction records.
+- Gold service: promote current best extraction to gold recipe.
+- Search service: query `gold_recipe_search_index`.
 
-- Creator service: normalize handles and create or fetch creators.
-- Post service: validate URLs, create posts, prevent duplicate URLs.
-- Extraction service: parse pasted text into likely recipe fields.
-- Search service: update and query FTS5 index.
-- Sync service: compare `config/creators.yml` to database creators and decide backfill, incremental sync, or skip.
-
-Do not overbuild service layers. These boundaries are for clarity, not enterprise architecture.
-
-## Validation
-
-Validate:
-
-- Creator handle is present.
-- Instagram URL looks like an Instagram post or reel URL.
-- Caption text is not empty.
-- Duplicate post URLs are handled predictably.
-
-Preserve the original user input where useful, but store normalized fields for search and deduplication.
-
-## Error Handling
-
-Errors should be understandable and recoverable:
-
-- Duplicate URL: link to existing post.
-- Invalid URL: ask for a valid Instagram post URL.
-- Empty caption: ask for pasted text.
-- Extraction failure: save raw post and mark extracted fields as empty or uncertain.
+Do not add legacy post/recipe tables back into the active application path.

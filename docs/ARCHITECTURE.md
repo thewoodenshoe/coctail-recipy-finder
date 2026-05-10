@@ -2,77 +2,66 @@
 
 ## Recommendation
 
-Use a simple server-rendered web app:
+Use a simple server-rendered FastAPI app with SQLite, SQLAlchemy, Jinja templates, SQLite FTS5, pytest, and systemd on Ubuntu.
 
-- FastAPI for backend routes.
-- Jinja templates for frontend pages.
-- SQLite for storage.
-- SQLite FTS5 for search.
-- SQLAlchemy for database access.
-- systemd for running the service on Ubuntu.
-- nginx as a reverse proxy.
+## Pipeline
 
-This is the right MVP shape because the product is mostly CRUD, text extraction, and search. A separate frontend app, external database, queue, or search cluster would add complexity before the product proves its workflow.
+The active architecture is:
 
-## Components
+```text
+creator config -> ingestion -> raw_posts -> recipe_extractions -> gold_recipes -> gold_recipe_search_index -> UI/search
+```
+
+Ingestion captures source text and metadata. Transformation extracts structured recipe fields. The gold layer stores the current best recipe record. Search and UI read from gold.
 
 ## Backend
 
 FastAPI owns:
 
 - HTTP routes.
-- Form handling.
-- Validation.
-- Database access.
-- Recipe extraction orchestration.
-- Search query handling.
+- Manual caption import.
+- Creator visibility.
+- Gold recipe search and detail pages.
 
-## Frontend
+CLI commands own:
 
-Jinja templates provide:
-
-- Search page.
-- Import post page.
-- Creator list page.
-- Post detail page.
-
-Keep the UI plain and task-focused. The user needs fast indexing and search, not a marketing site.
+- database initialization
+- raw download
+- raw transformation
+- gold search rebuild
+- creator sync
 
 ## Database
 
 SQLite stores:
 
-- Creators.
-- Posts.
-- Extracted recipe fields.
-- Search index data through FTS5.
+- creators
+- raw source captures
+- extraction history
+- gold recipes
+- gold FTS5 index
 
-SQLite is acceptable for the MVP because the expected data volume is small and deployment is simpler.
+Legacy `posts`, `recipes`, and `search_index` are obsolete and should not be reintroduced.
 
 ## Ingestion
 
-Start with manual ingestion:
+Supported ingestion paths:
 
-1. User enters creator handle.
-2. User enters Instagram post URL.
-3. User pastes caption text.
-4. App extracts recipe fields.
-5. App updates search index.
+- manual caption import
+- authorized browser-assisted raw text download
+- stubbed public provider that does not scrape
 
-Do not build scraping first. It is the wrong first risk to take because it is brittle, platform-sensitive, and unnecessary to validate the product.
+Do not download videos. Do not bypass login, CAPTCHA, rate limits, or platform protections.
 
 ## Deployment
 
-Target Ubuntu:
+Production runs on Ubuntu:
 
-- App process managed by systemd.
-- nginx proxies HTTP traffic to the local app port.
-- SQLite database stored in an application data directory.
-- Direct IP access is acceptable for MVP.
+- FastAPI under systemd.
+- Nightly sync under systemd timer.
+- SQLite database in the project `data/` directory.
+- Public access through the existing Cloudflare Tunnel.
 
 ## Tradeoffs
 
-- SQLite is simple and reliable for MVP, but may need migration to PostgreSQL if concurrency or multi-user needs grow.
-- Jinja is fast to build and easy to deploy, but less interactive than a separate frontend app.
-- Manual ingestion is slower for data entry, but avoids scraping risk and proves whether search/indexing is useful.
-- FTS5 is built into SQLite and good enough for local text search, but advanced ranking or semantic search may require later additions.
+SQLite and FTS5 are sufficient for the MVP. If data volume, concurrency, or ranking needs outgrow SQLite, revisit PostgreSQL or an external search engine later.

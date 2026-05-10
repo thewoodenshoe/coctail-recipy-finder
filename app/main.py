@@ -7,14 +7,13 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR
 from app.db import get_db, init_database
-from app.creators import load_creator_config
 from app.gold import search_gold_recipes
-from app.models import Creator, GoldRecipe, Post
-from app.services import import_post
+from app.models import Creator, GoldRecipe
+from app.services import import_caption_to_gold
 
 
 app = FastAPI(title="Cocktail Recipe Finder")
@@ -81,7 +80,7 @@ def import_caption(
     db: Session = Depends(get_db),
 ):
     try:
-        post = import_post(db, creator, source_url, caption_text)
+        recipe = import_caption_to_gold(db, creator, source_url, caption_text)
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -90,33 +89,7 @@ def import_caption(
             {"request": request, "error": str(exc)},
             status_code=400,
         )
-    return RedirectResponse(url=f"/posts/{post.id}", status_code=303)
-
-
-@app.get("/posts/{post_id}")
-def post_detail(post_id: int, request: Request, db: Session = Depends(get_db)):
-    post = db.scalar(
-        select(Post)
-        .options(joinedload(Post.creator), joinedload(Post.recipe))
-        .where(Post.id == post_id)
-    )
-    if post is None:
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
-    ingredients = []
-    base_spirits = []
-    if post.recipe:
-        try:
-            ingredients = json.loads(post.recipe.ingredients_json or "[]")
-        except json.JSONDecodeError:
-            ingredients = [post.recipe.ingredients_json]
-        try:
-            base_spirits = json.loads(post.recipe.base_spirits_json or "[]")
-        except json.JSONDecodeError:
-            base_spirits = [post.recipe.base_spirit]
-    return templates.TemplateResponse(
-        "post_detail.html",
-        {"request": request, "post": post, "ingredients": ingredients, "base_spirits": base_spirits},
-    )
+    return RedirectResponse(url=f"/gold/{recipe.id}", status_code=303)
 
 
 @app.get("/gold/{gold_id}")
@@ -164,7 +137,7 @@ def _decorate_result(row: dict) -> dict:
     row["ingredients"] = [ingredient for ingredient in display_ingredients if ingredient]
     row["base_spirits"] = [spirit for spirit in base_spirits if spirit]
     row["drink_name"] = row.get("drink_name") or row.get("drink_title")
-    row["detail_path"] = f"/gold/{row['id']}" if row.get("drink_title") is not None else f"/posts/{row['id']}"
+    row["detail_path"] = f"/gold/{row['id']}"
     row["short_caption"] = (row.get("caption_text") or "")[:220]
     row["show_garnish"] = bool(row.get("garnish") and row.get("garnish") != row.get("method"))
     return row

@@ -33,59 +33,17 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 
 def init_database(db_engine: Engine = engine) -> None:
     Base.metadata.create_all(bind=db_engine)
-    migrate_sqlite_schema(db_engine)
-    create_search_index(db_engine)
+    drop_legacy_sqlite_tables(db_engine)
     create_gold_search_index(db_engine)
 
 
-def migrate_sqlite_schema(db_engine: Engine) -> None:
+def drop_legacy_sqlite_tables(db_engine: Engine) -> None:
     if db_engine.dialect.name != "sqlite":
         return
     with db_engine.begin() as connection:
-        columns = {
-            row["name"]
-            for row in connection.execute(text("PRAGMA table_info(posts)")).mappings().all()
-        }
-        additions = {
-            "raw_text": "ALTER TABLE posts ADD COLUMN raw_text TEXT",
-            "raw_fetched_at": "ALTER TABLE posts ADD COLUMN raw_fetched_at DATETIME",
-            "last_seen_at": "ALTER TABLE posts ADD COLUMN last_seen_at DATETIME",
-        }
-        for column, statement in additions.items():
-            if column not in columns:
-                connection.execute(text(statement))
-
-        recipe_columns = {
-            row["name"]
-            for row in connection.execute(text("PRAGMA table_info(recipes)")).mappings().all()
-        }
-        if "extra_instagram_text" not in recipe_columns:
-            connection.execute(text("ALTER TABLE recipes ADD COLUMN extra_instagram_text TEXT"))
-        if "base_spirits_json" not in recipe_columns:
-            connection.execute(
-                text("ALTER TABLE recipes ADD COLUMN base_spirits_json TEXT NOT NULL DEFAULT '[]'")
-            )
-
-
-def create_search_index(db_engine: Engine) -> None:
-    with db_engine.begin() as connection:
-        connection.execute(
-            text(
-                """
-                CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
-                    post_id UNINDEXED,
-                    creator_handle,
-                    source_url,
-                    caption_text,
-                    drink_name,
-                    base_spirit,
-                    ingredients,
-                    method,
-                    tags
-                )
-                """
-            )
-        )
+        connection.execute(text("DROP TABLE IF EXISTS search_index"))
+        connection.execute(text("DROP TABLE IF EXISTS recipes"))
+        connection.execute(text("DROP TABLE IF EXISTS posts"))
 
 
 def create_gold_search_index(db_engine: Engine) -> None:

@@ -1,104 +1,114 @@
 # Database
 
-## Recommendation
+The active schema is a raw-to-gold pipeline. Legacy `posts`, `recipes`, and `search_index` tables are obsolete and are dropped by `init-db` if found.
 
-Use SQLite for the MVP with SQLAlchemy models and SQLite FTS5 for full-text search.
-
-SQLite is enough for a single-owner internal tool and keeps deployment simple.
-
-## Proposed Tables
-
-The current implementation uses SQLAlchemy models in `app/models.py` and an app-managed SQLite FTS5 table created by `app/db.py`.
+## Active Tables
 
 ## `creators`
 
-Stores tracked Instagram creators.
+Tracked Instagram creators from `config/creators.yml`.
 
-Suggested columns:
+Key fields:
 
-- `id`
 - `handle`
-- `display_name`
 - `profile_url`
-- `notes`
-- `created_at`
-- `updated_at`
+- `last_sync_at`
+- `backfill_completed_at`
+- `sync_status`
+- `sync_error`
+- `active`
 
-Constraints:
+## `raw_posts`
 
-- Unique normalized `handle`.
+Source capture layer. Store original captured Instagram/source text and metadata as close to source as practical.
 
-## `posts`
+Key fields:
 
-Stores source post records.
-
-Suggested columns:
-
-- `id`
+- `platform`
 - `creator_id`
-- `instagram_url`
-- `normalized_url`
-- `caption_text`
-- `raw_text`
-- `raw_fetched_at`
-- `last_seen_at`
-- `source_type`
-- `notes`
+- `creator_handle_snapshot`
+- `source_url`
+- `external_post_id`
+- `captured_at`
+- `content_hash`
+- `raw_json`
+- `raw_caption_text`
+- `raw_intro_text`
+- `raw_hashtags_json`
+- `raw_view_count`
+- `raw_like_count`
+- `raw_comment_count`
+- `posted_at`
+- `capture_completeness`
+- `ingestion_provider`
+- `ingestion_status`
+- `ingestion_error`
+
+## `recipe_extractions`
+
+Transformation history. Each transformer run can create/update an extraction record for a raw post and transformer version.
+
+Key fields:
+
+- `raw_post_id`
+- `transformer_name`
+- `transformer_version`
+- `status`
+- `extracted_json`
+- `confidence_score`
+- `quality_score`
+- `confidence_reasons_json`
 - `created_at`
-- `updated_at`
+- `error`
 
-Constraints:
+## `gold_recipes`
 
-- Unique `normalized_url`.
-- Foreign key to `creators`.
+Current best structured recipe records. Search and UI should read from this table, not raw text.
 
-## `extracted_recipes`
+Key fields:
 
-Stores extracted recipe-like fields for a post.
-
-Suggested columns:
-
-- `id`
-- `post_id`
+- `raw_post_id`
+- `extraction_id`
+- `creator_id`
+- `creator_handle`
+- `source_url`
 - `drink_title`
+- `drink_title_normalized`
+- `intro_text`
 - `base_spirits_json`
-- `ingredients_text`
-- `instructions_text`
-- `garnish_text`
+- `ingredients_json`
+- `method`
+- `garnish`
 - `glassware`
-- `confidence`
-- `extraction_method`
-- `created_at`
-- `updated_at`
+- `tags_json`
+- `confidence_score`
+- `quality_score`
+- `view_count`
+- `like_count`
+- `posted_at`
+- `transformed_at`
+- `transformer_version`
+- `status`
 
-Constraints:
+## `gold_recipe_search_index`
 
-- One current extracted recipe per post for MVP, unless later examples require multiple recipes per post.
+SQLite FTS5 table for searchable gold recipes.
 
-## `search_index`
+Indexed content:
 
-Use SQLite FTS5 if needed as a virtual table.
-
-Suggested indexed content:
-
-- Creator handle.
-- Drink title.
-- Ingredients.
-- Instructions.
-- Caption text.
-- Notes.
-
-Implementation options:
-
-- FTS5 virtual table maintained by app code after post create/update.
-- FTS5 external-content table tied to `posts` if the schema benefits from it later.
-
-For MVP, app-managed updates are simpler and easier to reason about.
+- creator handle
+- drink title
+- normalized drink title
+- base spirits
+- ingredient names
+- tags
+- intro text
+- raw fallback text
 
 ## Data Principles
 
-- Preserve raw fetched text separately from extracted recipe fields.
-- Store extracted fields separately.
-- Store normalized URLs for deduplication.
+- Preserve raw captured text.
+- Treat extraction and gold records as rebuildable derived data.
+- Store display values and normalized values where useful.
 - Do not store media files.
-- Do not store Instagram login/session credentials.
+- Do not store Instagram credentials or session state in the repo.

@@ -11,11 +11,9 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.extraction import extract_recipe
-from app.models import Creator, GoldRecipe, Post, RawPost, Recipe, RecipeExtraction
+from app.models import Creator, GoldRecipe, RawPost, RecipeExtraction
 
 
-LEGACY_TRANSFORMER_NAME = "legacy_migration"
-LEGACY_TRANSFORMER_VERSION = "legacy_migration_v1"
 DETERMINISTIC_TRANSFORMER_NAME = "deterministic_recipe_extractor"
 DETERMINISTIC_TRANSFORMER_VERSION = "deterministic_recipe_v1"
 
@@ -25,25 +23,6 @@ def normalize_title(title: str | None) -> str | None:
         return None
     tokens = re.findall(r"[A-Za-z0-9]+", title.lower())
     return " ".join(tokens) or None
-
-
-def migrate_legacy_to_gold(session: Session) -> dict[str, int]:
-    counts = {"raw_posts": 0, "recipe_extractions": 0, "gold_recipes": 0}
-    posts = session.scalars(select(Post).order_by(Post.id)).all()
-    for post in posts:
-        raw_post, raw_created = upsert_raw_post_from_legacy(session, post)
-        extraction, extraction_created = upsert_extraction_from_legacy(session, raw_post, post.recipe)
-        gold_recipe, gold_created = upsert_gold_recipe_from_extraction(
-            session,
-            raw_post,
-            extraction,
-            post.creator,
-        )
-        update_gold_recipe_search_index(session, gold_recipe, raw_post)
-        counts["raw_posts"] += int(raw_created)
-        counts["recipe_extractions"] += int(extraction_created)
-        counts["gold_recipes"] += int(gold_created)
-    return counts
 
 
 def rebuild_gold_search_index(session: Session) -> int:
@@ -56,12 +35,9 @@ def rebuild_gold_search_index(session: Session) -> int:
 
 def clear_all_data(session: Session) -> None:
     session.execute(text("DELETE FROM gold_recipe_search_index"))
-    session.execute(text("DELETE FROM search_index"))
     session.execute(text("DELETE FROM gold_recipes"))
     session.execute(text("DELETE FROM recipe_extractions"))
     session.execute(text("DELETE FROM raw_posts"))
-    session.execute(text("DELETE FROM recipes"))
-    session.execute(text("DELETE FROM posts"))
     session.execute(
         text(
             """
@@ -202,79 +178,6 @@ def create_extraction_from_raw(session: Session, raw_post: RawPost) -> RecipeExt
     return extraction
 
 
-def upsert_raw_post_from_legacy(session: Session, post: Post) -> tuple[RawPost, bool]:
-    raw_post = session.scalar(select(RawPost).where(RawPost.source_url == post.source_url))
-    created = raw_post is None
-    if raw_post is None:
-        raw_post = RawPost(
-            platform=post.source_platform,
-            creator_id=post.creator_id,
-            creator_handle_snapshot=post.creator.handle,
-            source_url=post.source_url,
-            external_post_id=post.external_post_id,
-            captured_at=post.raw_fetched_at or post.discovered_at,
-            content_hash=post.content_hash,
-            raw_caption_text=post.caption_text,
-            raw_json=json.dumps(
-                {
-                    "legacy_post_id": post.id,
-                    "raw_text": post.raw_text,
-                },
-                ensure_ascii=True,
-            ),
-            raw_hashtags_json=json.dumps(_hashtags(post.caption_text), ensure_ascii=True),
-            posted_at=post.posted_at,
-            capture_completeness="legacy_text_only",
-            ingestion_provider="legacy_migration",
-            ingestion_status="raw_captured",
-        )
-        session.add(raw_post)
-        session.flush()
-    else:
-        raw_post.creator_id = post.creator_id
-        raw_post.creator_handle_snapshot = post.creator.handle
-        raw_post.external_post_id = post.external_post_id or raw_post.external_post_id
-        raw_post.content_hash = post.content_hash
-        raw_post.raw_caption_text = post.caption_text
-        raw_post.raw_hashtags_json = json.dumps(_hashtags(post.caption_text), ensure_ascii=True)
-    return raw_post, created
-
-
-def upsert_extraction_from_legacy(
-    session: Session,
-    raw_post: RawPost,
-    recipe: Recipe | None,
-) -> tuple[RecipeExtraction, bool]:
-    extraction = session.scalar(
-        select(RecipeExtraction).where(
-            RecipeExtraction.raw_post_id == raw_post.id,
-            RecipeExtraction.transformer_version == LEGACY_TRANSFORMER_VERSION,
-        )
-    )
-    created = extraction is None
-    status = _legacy_status(recipe)
-    extracted = _legacy_extracted_json(raw_post, recipe)
-    if extraction is None:
-        extraction = RecipeExtraction(
-            raw_post_id=raw_post.id,
-            transformer_name=LEGACY_TRANSFORMER_NAME,
-            transformer_version=LEGACY_TRANSFORMER_VERSION,
-            status=status,
-            extracted_json=json.dumps(extracted, ensure_ascii=True),
-            confidence_score=recipe.confidence_score if recipe else None,
-            quality_score=_quality_score(recipe),
-            confidence_reasons_json=json.dumps([], ensure_ascii=True),
-        )
-        session.add(extraction)
-        session.flush()
-    else:
-        extraction.status = status
-        extraction.extracted_json = json.dumps(extracted, ensure_ascii=True)
-        extraction.confidence_score = recipe.confidence_score if recipe else None
-        extraction.quality_score = _quality_score(recipe)
-    return extraction, created
-
-
 def upsert_gold_recipe_from_extraction(
     session: Session,
     raw_post: RawPost,
@@ -396,60 +299,12 @@ def search_gold_recipes(
     return [dict(row) for row in rows]
 
 
-def _legacy_extracted_json(raw_post: RawPost, recipe: Recipe | None) -> dict[str, Any]:
-    if recipe is None:
-        parsed = extract_recipe(raw_post.raw_caption_text)
-        return {
-            "drink_title": parsed.drink_name,
-            "intro_text": parsed.extra_instagram_text,
-            "base_spirits": parsed.base_spirits,
-            "ingredients": _structured_ingredients(parsed.ingredients),
-            "method": parsed.method,
-            "garnish": parsed.garnish,
-            "glassware": None,
-            "tags": parsed.tags,
-        }
-    return {
-        "drink_title": recipe.drink_name,
-        "intro_text": recipe.extra_instagram_text,
-        "base_spirits": _json_list(recipe.base_spirits_json),
-        "ingredients": _structured_ingredients(_json_list(recipe.ingredients_json)),
-        "method": recipe.method,
-        "garnish": recipe.garnish,
-        "glassware": None,
-        "tags": _json_list(raw_post.raw_hashtags_json),
-    }
-
-
-def _legacy_status(recipe: Recipe | None) -> str:
-    if recipe is None:
-        return "not_recipe"
-    if not _json_list(recipe.ingredients_json):
-        return "not_recipe"
-    if recipe.confidence_score is not None and recipe.confidence_score < 0.5:
-        return "low_confidence"
-    return "success"
-
-
 def _gold_status(extraction: RecipeExtraction, extracted: dict[str, Any]) -> str:
     if extraction.status == "not_recipe" or not extracted.get("ingredients"):
         return "not_recipe"
     if extraction.status == "low_confidence":
         return "low_confidence"
     return "active"
-
-
-def _quality_score(recipe: Recipe | None) -> float:
-    if recipe is None:
-        return 0.0
-    score = 0.0
-    score += 0.25 if recipe.drink_name else 0
-    score += 0.25 if _json_list(recipe.ingredients_json) else 0
-    score += 0.2 if recipe.method else 0
-    score += 0.15 if _json_list(recipe.base_spirits_json) else 0
-    score += 0.05 if recipe.garnish else 0
-    score += min(recipe.confidence_score or 0, 1.0) * 0.1
-    return round(min(score, 1.0), 3)
 
 
 def _quality_score_from_extracted(extracted: dict[str, Any], confidence_score: float | None) -> float:

@@ -9,7 +9,6 @@ from app.config import get_settings
 from app.db import init_database, session_scope
 from app.gold import (
     clear_all_data,
-    migrate_legacy_to_gold,
     rebuild_gold_search_index,
     transform_raw_posts,
     upsert_raw_post_from_ingested,
@@ -17,7 +16,7 @@ from app.gold import (
 from app.creators import normalize_handle
 from app.ingestion.instagram_browser import discover_creator_post_urls, fetch_instagram_post_text
 from app.models import Creator
-from app.services import import_post, provider_for_name, reparse_posts, sync_creators_from_config
+from app.services import import_caption_to_gold, provider_for_name, sync_creators_from_config
 
 
 def main() -> None:
@@ -33,8 +32,6 @@ def main() -> None:
     auth_parser = subparsers.add_parser("instagram-auth", help="Create an authorized Instagram browser session outside the repo")
     auth_parser.add_argument("--headless", action="store_true")
 
-    subparsers.add_parser("reparse-posts", help="Rebuild extracted recipes and search index from stored raw text")
-    subparsers.add_parser("migrate-to-gold", help="Copy legacy posts/recipes into raw/extraction/gold tables")
     subparsers.add_parser("rebuild-gold-search", help="Rebuild the gold recipe FTS index")
     subparsers.add_parser("clear-data", help="Delete all captured post, extraction, recipe, and search data")
 
@@ -80,25 +77,6 @@ def main() -> None:
 
         save_instagram_session(settings.instagram_session_state_path, headless=args.headless)
         print(f"Instagram session saved to {settings.instagram_session_state_path}")
-        return
-
-    if args.command == "reparse-posts":
-        init_database()
-        with session_scope() as session:
-            count = reparse_posts(session)
-            print(f"Reparsed {count} posts")
-        return
-
-    if args.command == "migrate-to-gold":
-        init_database()
-        with session_scope() as session:
-            counts = migrate_legacy_to_gold(session)
-            print(
-                "Migrated legacy data to gold: "
-                f"{counts['raw_posts']} raw_posts, "
-                f"{counts['recipe_extractions']} recipe_extractions, "
-                f"{counts['gold_recipes']} gold_recipes created"
-            )
         return
 
     if args.command == "rebuild-gold-search":
@@ -182,8 +160,8 @@ def main() -> None:
         init_database()
         caption = Path(args.caption_file).read_text()
         with session_scope() as session:
-            post = import_post(session, args.creator, args.url, caption)
-            print(f"Imported post {post.id}: {post.source_url}")
+            recipe = import_caption_to_gold(session, args.creator, args.url, caption)
+            print(f"Imported gold recipe {recipe.id}: {recipe.source_url}")
         return
 
 

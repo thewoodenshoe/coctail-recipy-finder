@@ -4,9 +4,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.ingestion.base import IngestionResult
-from app.ingestion.base import IngestedPost
-from app.models import Creator
-from app.services import reparse_posts, sync_creators_from_config, sync_decision, upsert_post
+from app.models import Creator, GoldRecipe, RawPost
+from app.services import sync_creators_from_config, sync_decision
 
 
 class FailingProvider:
@@ -123,27 +122,38 @@ def test_sync_can_limit_to_one_creator(db_session, tmp_path: Path):
     assert [action.handle for action in actions] == ["oldcreator"]
 
 
-def test_upsert_post_preserves_raw_text_and_reparse_updates_search(db_session):
-    creator = Creator(
-        handle="notjustabartender",
-        profile_url="https://www.instagram.com/notjustabartender/",
-        active=True,
-    )
-    db_session.add(creator)
-    db_session.flush()
+def test_sync_writes_raw_and_gold_records(db_session, tmp_path: Path):
+    class RecipeProvider:
+        def backfill(self, creator):
+            from app.ingestion.base import IngestedPost
 
-    post = upsert_post(
-        db_session,
-        creator,
-        IngestedPost(
-            source_url="https://www.instagram.com/p/DXnYlmJjk48/",
-            caption_text="PINK PONY CLUB\n1.5oz | 45ml gin",
-            raw_text="raw page text\nPINK PONY CLUB\n1.5oz | 45ml gin",
-        ),
+            return IngestionResult(
+                posts=[
+                    IngestedPost(
+                        source_url="https://www.instagram.com/p/DXnYlmJjk48/",
+                        caption_text="PINK PONY CLUB\n1.5oz | 45ml gin\nShake hard.",
+                        raw_text="raw page text\nPINK PONY CLUB\n1.5oz | 45ml gin\nShake hard.",
+                    )
+                ],
+                message="ok",
+            )
+
+        def incremental(self, creator):
+            return self.backfill(creator)
+
+    path = tmp_path / "creators.yml"
+    path.write_text(
+        """
+creators:
+  - handle: notjustabartender
+    profile_url: "https://www.instagram.com/notjustabartender/"
+    active: true
+"""
     )
+
+    actions = sync_creators_from_config(db_session, path, provider=RecipeProvider())
     db_session.commit()
 
-    assert post.raw_text.startswith("raw page text")
-    assert post.raw_fetched_at is not None
-    assert post.last_seen_at is not None
-    assert reparse_posts(db_session) == 1
+    assert actions[0].status == "backfilled"
+    assert db_session.query(RawPost).count() == 1
+    assert db_session.query(GoldRecipe).count() == 1

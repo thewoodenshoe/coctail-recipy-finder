@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -8,11 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.creators import CreatorConfig, load_creator_config, normalize_handle
-from app.extraction import extract_recipe
+from app.gold import (
+    transform_raw_posts,
+    upsert_raw_post_from_ingested,
+)
 from app.ingestion.base import IngestedPost, IngestionProvider
 from app.ingestion.instagram_public import InstagramPublicProvider
-from app.models import Creator, Post, Recipe
-from app.search import update_post_search_index
+from app.models import Creator, GoldRecipe
 
 
 @dataclass(frozen=True)
@@ -21,10 +22,6 @@ class SyncAction:
     action: str
     status: str
     message: str = ""
-
-
-def content_hash(caption_text: str) -> str:
-    return hashlib.sha256(caption_text.encode("utf-8")).hexdigest()
 
 
 def provider_for_name(name: str | None) -> IngestionProvider:
@@ -67,7 +64,12 @@ def sync_decision(creator: Creator) -> str:
     return "incremental"
 
 
-def import_post(session: Session, creator_handle: str, source_url: str, caption_text: str) -> Post:
+def import_caption_to_gold(
+    session: Session,
+    creator_handle: str,
+    source_url: str,
+    caption_text: str,
+) -> GoldRecipe:
     handle = normalize_handle(creator_handle)
     creator = session.scalar(select(Creator).where(Creator.handle == handle))
     if creator is None:
@@ -81,85 +83,17 @@ def import_post(session: Session, creator_handle: str, source_url: str, caption_
         session.flush()
 
     ingested = IngestedPost(source_url=source_url, caption_text=caption_text, raw_text=caption_text)
-    return upsert_post(session, creator, ingested)
-
-
-def upsert_post(session: Session, creator: Creator, ingested: IngestedPost) -> Post:
-    source_url = ingested.source_url.strip()
-    caption_text = ingested.caption_text.strip()
-    raw_text = (ingested.raw_text or ingested.caption_text).strip()
-    if not source_url:
-        raise ValueError("Source URL is required")
-    if not caption_text:
-        raise ValueError("Caption text is required")
-
-    post = session.scalar(select(Post).where(Post.source_url == source_url))
-    digest = content_hash(raw_text or caption_text)
-    now = datetime.now(timezone.utc)
-    if post is None:
-        post = Post(
-            creator_id=creator.id,
-            source_platform="instagram",
-            source_url=source_url,
-            external_post_id=ingested.external_post_id,
-            caption_text=caption_text,
-            raw_text=raw_text,
-            posted_at=ingested.posted_at,
-            raw_fetched_at=now,
-            last_seen_at=now,
-            content_hash=digest,
-        )
-        session.add(post)
-        session.flush()
-    elif post.content_hash != digest:
-        post.caption_text = caption_text
-        post.raw_text = raw_text
-        post.external_post_id = ingested.external_post_id or post.external_post_id
-        post.posted_at = ingested.posted_at or post.posted_at
-        post.content_hash = digest
-        post.raw_fetched_at = now
-        post.last_seen_at = now
-        post.updated_at = now
-        session.flush()
-    else:
-        post.last_seen_at = now
-        session.flush()
-
-    recipe_data = extract_recipe(caption_text)
-    if post.recipe is None:
-        post.recipe = Recipe(post_id=post.id, ingredients_json="[]")
-
-    post.recipe.drink_name = recipe_data.drink_name
-    post.recipe.base_spirit = recipe_data.base_spirit
-    post.recipe.base_spirits_json = recipe_data.base_spirits_json()
-    post.recipe.ingredients_json = recipe_data.ingredients_json()
-    post.recipe.method = recipe_data.method
-    post.recipe.garnish = recipe_data.garnish
-    post.recipe.extra_instagram_text = recipe_data.extra_instagram_text
-    post.recipe.confidence_score = recipe_data.confidence_score
-    session.flush()
-    session.refresh(post)
-    update_post_search_index(session, post)
-    return post
-
-
-def reparse_posts(session: Session) -> int:
-    posts = session.scalars(select(Post)).all()
-    for post in posts:
-        text = post.raw_text or post.caption_text
-        recipe_data = extract_recipe(text)
-        if post.recipe is None:
-            post.recipe = Recipe(post_id=post.id, ingredients_json="[]")
-        post.recipe.drink_name = recipe_data.drink_name
-        post.recipe.base_spirit = recipe_data.base_spirit
-        post.recipe.base_spirits_json = recipe_data.base_spirits_json()
-        post.recipe.ingredients_json = recipe_data.ingredients_json()
-        post.recipe.method = recipe_data.method
-        post.recipe.garnish = recipe_data.garnish
-        post.recipe.extra_instagram_text = recipe_data.extra_instagram_text
-        post.recipe.confidence_score = recipe_data.confidence_score
-        update_post_search_index(session, post)
-    return len(posts)
+    raw_post, _created = upsert_raw_post_from_ingested(
+        session,
+        creator,
+        ingested,
+        provider_name="manual_import",
+    )
+    transform_raw_posts(session, creator.handle)
+    gold = session.scalar(select(GoldRecipe).where(GoldRecipe.raw_post_id == raw_post.id))
+    if gold is None:
+        raise RuntimeError("Manual import did not produce a gold recipe record")
+    return gold
 
 
 def sync_creators_from_config(
@@ -188,8 +122,16 @@ def sync_creators_from_config(
 
         try:
             result = provider.backfill(creator) if decision == "backfill" else provider.incremental(creator)
+            imported = 0
             for ingested in result.posts:
-                upsert_post(session, creator, ingested)
+                upsert_raw_post_from_ingested(
+                    session,
+                    creator,
+                    ingested,
+                    provider_name=provider.__class__.__name__,
+                )
+                imported += 1
+            transform_counts = transform_raw_posts(session, creator.handle)
             creator.last_sync_at = now
             creator.sync_error = None
             if decision == "backfill":
@@ -202,7 +144,12 @@ def sync_creators_from_config(
                     creator.handle,
                     decision,
                     creator.sync_status,
-                    result.message or f"{len(result.posts)} posts imported",
+                    result.message
+                    or (
+                        f"{imported} raw posts imported; "
+                        f"{transform_counts['active']} active recipes, "
+                        f"{transform_counts['not_recipe']} non-recipes"
+                    ),
                 )
             )
         except Exception as exc:

@@ -119,7 +119,7 @@ class InstagramBrowserProvider:
 
         posts: list[IngestedPost] = []
         known_unchanged = 0
-        known_hashes = {post.source_url: post.content_hash for post in creator.posts}
+        known_urls: set[str] = set()
 
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
@@ -158,7 +158,7 @@ class InstagramBrowserProvider:
                 )
                 posts.append(ingested)
 
-                if stop_on_known and url in known_hashes:
+                if stop_on_known and url in known_urls:
                     known_unchanged += 1
                     if known_unchanged >= self.unchanged_stop_count:
                         break
