@@ -196,7 +196,7 @@ def _decorate_result(row: dict) -> dict:
         base_spirits = []
     row["ingredients"] = [ingredient for ingredient in display_ingredients if ingredient]
     row["base_spirits"] = [spirit for spirit in base_spirits if spirit]
-    row["drink_name"] = row.get("drink_name") or row.get("drink_title")
+    row["drink_name"] = _display_title(row, row["ingredients"])
     row["detail_path"] = f"/gold/{row['id']}"
     row["image_url"] = _media_url(row.get("local_image_path"))
     row["short_caption"] = (row.get("caption_text") or "")[:220]
@@ -204,6 +204,16 @@ def _decorate_result(row: dict) -> dict:
     popularity = row.get("view_count") or row.get("like_count") or row.get("popularity_count")
     row["popularity_label"] = _format_count(popularity)
     return row
+
+
+def _display_title(row: dict, ingredients: list[str]) -> str:
+    title = (row.get("drink_name") or row.get("drink_title") or "").strip()
+    invalid_titles = {"ingredient", "ingredients", "ingredient:", "ingredients:", "method", "method:"}
+    if title and title.lower() not in invalid_titles:
+        return title
+    if ingredients:
+        return f"{ingredients[0].split(',')[0][:42]} cocktail"
+    return f"Recipe from @{row.get('creator_handle', 'creator')}"
 
 
 def _valid_filter_value(value: str, filters: list[dict[str, str]]) -> str:
@@ -235,6 +245,8 @@ def _format_count(value: int | str | None) -> str:
     try:
         count = int(value)
     except (TypeError, ValueError):
+        return ""
+    if count <= 0:
         return ""
     if count >= 1_000_000:
         return f"{count / 1_000_000:.1f}M"

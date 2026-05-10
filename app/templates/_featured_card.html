@@ -1,4 +1,4 @@
-<article class="featured-card">
+<article class="featured-card {% if not result.image_url %}featured-card-no-image{% endif %}">
   {% if result.image_url %}
     <a href="{{ result.detail_path }}" class="featured-image-link">
       <img class="featured-image" src="{{ result.image_url }}" alt="{{ result.drink_name or 'Cocktail post image' }}">
@@ -18,7 +18,14 @@
       </div>
     {% endif %}
     {% if result.ingredients %}
-      <p>{{ result.ingredients[:3] | join(", ") }}</p>
+      <ul class="ingredient-preview">
+        {% for ingredient in result.ingredients[:4] %}
+          <li>{{ ingredient }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if result.method %}
+      <p class="method-preview">{{ result.method }}</p>
     {% endif %}
   </div>
 </article>

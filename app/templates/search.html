@@ -2,6 +2,10 @@
 {% block title %}Search - Cocktail Recipe Finder{% endblock %}
 {% block content %}
   <section class="search-hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Cocktail index</p>
+      <h1>Find the next drink by spirit, ingredient, or creator.</h1>
+    </div>
     <form method="get" action="/" class="hero-search-form">
       <input type="search" name="q" value="{{ q }}" placeholder="Search cocktails, ingredients, creators..." aria-label="Search cocktails, ingredients, creators">
       {% if creator_filter %}<input type="hidden" name="creator" value="{{ creator_filter }}">{% endif %}
@@ -61,7 +65,10 @@
 
     <div class="featured-group">
       <div class="featured-heading">
-        <h2>Most viewed gin cocktails</h2>
+        <div>
+          <p class="eyebrow">Gin</p>
+          <h2>Most viewed gin cocktails</h2>
+        </div>
         <a href="/?base=gin">View all</a>
       </div>
       <div class="featured-grid">
@@ -75,7 +82,10 @@
 
     <div class="featured-group">
       <div class="featured-heading">
-        <h2>Most viewed bourbon cocktails</h2>
+        <div>
+          <p class="eyebrow">Bourbon</p>
+          <h2>Most viewed bourbon cocktails</h2>
+        </div>
         <a href="/?base=bourbon">View all</a>
       </div>
       <div class="featured-grid">
@@ -89,7 +99,10 @@
 
     <div class="featured-group">
       <div class="featured-heading">
-        <h2>Creator favorites</h2>
+        <div>
+          <p class="eyebrow">Creators</p>
+          <h2>Creator favorites</h2>
+        </div>
         <span>Most viewed across creators</span>
       </div>
       <div class="featured-grid">

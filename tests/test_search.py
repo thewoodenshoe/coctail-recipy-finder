@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.main import _display_title, _format_count
 from app.gold import search_gold_recipes
 from app.services import import_caption_to_gold
 
@@ -30,3 +31,8 @@ def test_gold_search_excludes_non_recipe_posts_without_ingredients(db_session):
     db_session.commit()
 
     assert search_gold_recipes(db_session, "competition") == []
+
+
+def test_result_display_helpers_hide_bad_title_and_zero_count():
+    assert _display_title({"drink_title": "Ingredients:", "creator_handle": "join_jules"}, ["2 oz gin"]) == "2 oz gin cocktail"
+    assert _format_count(0) == ""
