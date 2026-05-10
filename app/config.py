@@ -15,10 +15,6 @@ class Settings:
     app_port: int = 8000
     database_url: str = "sqlite:///./cocktail_index.db"
     creator_config_path: Path = BASE_DIR / "config" / "creators.yml"
-    instagram_session_state_path: Path = Path.home() / ".config" / "cocktail-index" / "instagram-storage-state.json"
-    instagram_backfill_max_posts: int = 120
-    instagram_incremental_max_posts: int = 30
-    instagram_unchanged_stop_count: int = 12
     media_dir: Path = BASE_DIR / "data" / "media"
 
 
@@ -31,14 +27,5 @@ def get_settings() -> Settings:
         creator_config_path=Path(
             os.getenv("CREATOR_CONFIG_PATH", str(BASE_DIR / "config" / "creators.yml"))
         ),
-        instagram_session_state_path=Path(
-            os.getenv(
-                "INSTAGRAM_SESSION_STATE_PATH",
-                str(Path.home() / ".config" / "cocktail-index" / "instagram-storage-state.json"),
-            )
-        ),
-        instagram_backfill_max_posts=int(os.getenv("INSTAGRAM_BACKFILL_MAX_POSTS", "120")),
-        instagram_incremental_max_posts=int(os.getenv("INSTAGRAM_INCREMENTAL_MAX_POSTS", "30")),
-        instagram_unchanged_stop_count=int(os.getenv("INSTAGRAM_UNCHANGED_STOP_COUNT", "12")),
         media_dir=Path(os.getenv("MEDIA_DIR", str(BASE_DIR / "data" / "media"))),
     )

@@ -71,7 +71,7 @@ For the first server sync, if the repo does not exist under the server projects 
 
 ## Sudo Handling
 
-If sudo is required, ask the product owner for a temporary sudo password and continue after it is provided. Never store the password in the repo or write it into documentation.
+If sudo is required, ask the product owner for temporary elevated access and continue after it is provided. Never store access material in the repo or write it into documentation.
 
 Use sudo only for operations that actually need it, such as firewall, nginx, systemd, package installation, or privileged file ownership changes.
 

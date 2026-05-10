@@ -28,10 +28,6 @@ def provider_for_name(name: str | None) -> IngestionProvider:
     provider_name = (name or "public").strip().lower()
     if provider_name in {"public", "instagram-public"}:
         return InstagramPublicProvider()
-    if provider_name in {"browser", "instagram-browser"}:
-        from app.ingestion.instagram_browser import InstagramBrowserProvider
-
-        return InstagramBrowserProvider()
     raise ValueError(f"Unknown ingestion provider: {name}")
 
 

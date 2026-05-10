@@ -47,7 +47,6 @@
 ## Phase 5 - Improved Ingestion
 
 - Evaluate workflow pain from manual ingestion.
-- Consider browser-assisted import.
-- Consider official or creator-authorized API options.
+- Consider official API or creator-authorized export options.
 - Consider AI-assisted extraction if deterministic parsing is insufficient.
-- Avoid abusive scraping behavior.
+- Avoid non-approved automated collection behavior.

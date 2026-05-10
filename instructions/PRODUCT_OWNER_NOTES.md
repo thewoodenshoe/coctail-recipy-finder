@@ -16,15 +16,9 @@ Ubuntu server access may eventually be available through:
 ssh ubuntu
 ```
 
-Future agents may request `sudo` when needed for deployment work, package installation, firewall configuration, nginx, or systemd. Do not assume server access is available until the product owner explicitly asks for deployment work.
+Future agents may request temporary elevated access when needed for deployment work, package installation, firewall configuration, nginx, or systemd. Do not assume server access is available until the product owner explicitly asks for deployment work.
 
-If sudo is needed, ask the product owner for a temporary sudo password directly and keep moving once provided. Use wording like:
-
-```text
-I need sudo. Give me the temporary password, and update it once we are done.
-```
-
-Never write sudo passwords into repo files, scripts, docs, commits, logs, `.env`, shell history, or issue text.
+Never write elevated-access secrets into repo files, scripts, docs, commits, logs, `.env`, shell history, or issue text.
 
 After each completed change set, the expected workflow is to commit, push, then sync the Ubuntu server copy:
 
@@ -40,7 +34,7 @@ For the initial server setup, clone the repo under `projects` if it is not alrea
 
 This rule should be applied to coherent completed changes after verification, not to every individual file save.
 
-Ubuntu is the production server for this project. Local work is acceptable for coding and technical unit tests. Production data, real ingestion runs, and any future Instagram-related collection work should run on Ubuntu.
+Ubuntu is the production server for this project. Local work is acceptable for coding and technical unit tests. Production data and scheduled jobs should run on Ubuntu.
 
 ## Secrets
 
@@ -61,9 +55,9 @@ Prefer:
 
 Avoid:
 
-- Aggressive scraping.
+- Non-approved automated collection.
 - Hidden infrastructure complexity.
 - Premature background worker systems.
 - Unnecessary cloud services.
-- Storing credentials, tokens, cookies, or session data in source control.
+- Storing secrets or private account material in source control.
 - Conflicting with CHS Finds/CHS Spots ports or nginx/Cloudflare settings.

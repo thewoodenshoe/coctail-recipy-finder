@@ -20,7 +20,7 @@ Future AI agents should:
 
 - Preserve the goal of a searchable cocktail creator recipe index.
 - Keep the MVP small and working.
-- Prefer manual ingestion before automated Instagram scraping.
+- Prefer manual or creator-provided source text ingestion before any automated collection.
 - Question brittle implementation details without being performatively contrarian.
 - Ask clarifying questions only when the answer materially changes implementation.
 - Summarize assumptions before major implementation work.
@@ -36,12 +36,12 @@ Unless a later decision changes this, assume:
 - Database: SQLite with FTS5.
 - ORM: SQLAlchemy.
 - Deployment: Ubuntu server, systemd, nginx.
-- Ingestion: manual creator handle, post URL, pasted caption text.
+- Ingestion: manual creator handle, post URL, pasted caption or creator-provided source text.
 
 ## Production Host Assumption
 
 The Ubuntu server reached with `ssh ubuntu` is the production host. Build and unit-test code locally when useful, then commit, push, and pull the latest repo state on Ubuntu after each completed change set.
 
-Production data and future Instagram-related ingestion should run on Ubuntu, not only on the local development machine.
+Production data and scheduled jobs should run on Ubuntu, not only on the local development machine.
 
 The direct-IP MVP port for this project is `8000`. Avoid conflicts with the existing CHS Finds/CHS Spots deployment, which already uses nginx/Cloudflare on `80`/`443`, the main app on `3000`, Umami on `3001`, and admin on `3456`.

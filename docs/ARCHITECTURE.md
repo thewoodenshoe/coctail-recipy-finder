@@ -26,7 +26,6 @@ FastAPI owns:
 CLI commands own:
 
 - database initialization
-- raw download
 - raw transformation
 - gold search rebuild
 - creator sync
@@ -48,10 +47,10 @@ Legacy `posts`, `recipes`, and `search_index` are obsolete and should not be rei
 Supported ingestion paths:
 
 - manual caption import
-- authorized browser-assisted raw text download
-- stubbed public provider that does not scrape
+- creator-provided source text import
+- stubbed public provider that does not collect Instagram content
 
-Do not download videos. Do not bypass login, CAPTCHA, rate limits, or platform protections.
+Do not download videos, mirror profiles, store account sessions, or automate around platform access controls.
 
 ## Deployment
 

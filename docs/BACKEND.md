@@ -25,7 +25,6 @@ The backend provides:
 
 - `python -m app.cli init-db`
 - `python -m app.cli clear-data`
-- `python -m app.cli download-raw --creator HANDLE --limit N --parallel N`
 - `python -m app.cli transform-raw [--creator HANDLE]`
 - `python -m app.cli rebuild-gold-search`
 - `python -m app.cli sync-creators`

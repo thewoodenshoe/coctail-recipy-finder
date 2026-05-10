@@ -111,4 +111,4 @@ Indexed content:
 - Treat extraction and gold records as rebuildable derived data.
 - Store display values and normalized values where useful.
 - Do not store media files.
-- Do not store Instagram credentials or session state in the repo.
+- Do not store secrets or private account material in the repo.

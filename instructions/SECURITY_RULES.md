@@ -8,16 +8,14 @@ Do not commit:
 
 - API keys.
 - Access tokens.
-- Session cookies.
-- Passwords.
+- Account session files.
 - Private keys.
 - Production `.env` files.
-- Instagram credentials.
-- Sudo passwords.
+- Account secrets.
 
 Use environment variables for configuration. Keep `.env.example` limited to placeholders.
 
-If a temporary sudo password is provided during an operational task, use it only for that task. Do not persist it anywhere.
+If temporary elevated access is provided during an operational task, use it only for that task. Do not persist it anywhere.
 
 ## Public Exposure
 
@@ -33,16 +31,14 @@ Before deployment, consider:
 - Logging that avoids sensitive data.
 - Whether direct port exposure is still needed after nginx or Cloudflare is configured.
 
-## Instagram And Platform Risk
+## Platform Risk
 
-Do not build:
+Do not add code that:
 
-- Login bypass.
-- CAPTCHA bypass.
-- Rate-limit evasion.
-- Aggressive scraping.
-- Credential sharing.
-- Automated behavior intended to avoid platform controls.
+- Works around platform access controls.
+- Stores account sessions, secrets, or private account material in the repo.
+- Mirrors profiles or downloads videos.
+- Performs non-approved automated collection.
 
 The first MVP should support manual post URL plus pasted caption ingestion. Later ingestion must be evaluated for platform compliance, reliability, and operational risk.
 

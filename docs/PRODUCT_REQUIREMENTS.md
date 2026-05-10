@@ -10,7 +10,7 @@ The product owner should be able to add creators, add posts, paste caption text,
 
 - As the product owner, I can add a cocktail creator by Instagram handle so their posts can be grouped.
 - As the product owner, I can add an Instagram post URL for a creator so the original source is preserved.
-- As the product owner, I can paste a caption or visible post text so the app can index the content without scraping Instagram.
+- As the product owner, I can paste a caption or visible post text so the app can index source material that I provide.
 - As the product owner, I can see likely drink title, ingredients, instructions, and extracted text so the recipe is easier to browse.
 - As the product owner, I can search for an ingredient or drink term so I can find relevant posts quickly.
 - As the product owner, I can open the original Instagram link from a result so I can inspect the source post.
@@ -30,7 +30,7 @@ The product owner should be able to add creators, add posts, paste caption text,
 
 ## Non-Goals
 
-- Automated Instagram scraping.
+- Automated Instagram collection.
 - Video downloading.
 - Login or user account system.
 - Multi-user permissions.

@@ -16,25 +16,15 @@ cd ~/projects/coctail-recipy-finder
 git pull --ff-only
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/playwright install chromium
 mkdir -p data
 DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db .venv/bin/python -m app.cli init-db
 ```
 
-Create the Instagram browser session outside the repo. Do not paste credentials into chat and do not commit the session file:
+Run creator sync to register configured creators. The current provider is intentionally a stub; content is added through manual or creator-provided source text import.
 
 ```bash
 DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db \
-INSTAGRAM_SESSION_STATE_PATH=/home/ubuntu/.config/cocktail-index/instagram-storage-state.json \
-.venv/bin/python -m app.cli instagram-auth
-```
-
-Then run the initial text-only load:
-
-```bash
-DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db \
-INSTAGRAM_SESSION_STATE_PATH=/home/ubuntu/.config/cocktail-index/instagram-storage-state.json \
-.venv/bin/python -m app.cli sync-creators --provider instagram-browser
+.venv/bin/python -m app.cli sync-creators
 ```
 
 ## Direct-Port Smoke Run

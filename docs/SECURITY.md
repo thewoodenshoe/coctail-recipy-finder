@@ -7,7 +7,7 @@ The MVP is likely a single-owner web app exposed by direct IP or used locally. M
 - Public IP exposure.
 - Accidental secret leakage.
 - Overly permissive server configuration.
-- Abusive or fragile Instagram ingestion behavior.
+- Non-approved or fragile Instagram source ingestion behavior.
 - Bad inputs causing crashes or data corruption.
 - Search or detail pages exposing data unexpectedly if the app becomes public.
 
@@ -47,16 +47,15 @@ Recommended MVP hardening:
 - Log operational errors without logging secrets.
 - Keep direct port exposure limited to the MVP test period.
 
-## Scraping And Platform Risk
+## Platform Risk
 
-Instagram scraping is a platform and reliability risk.
+Instagram source collection is a platform and reliability risk.
 
-Do not build:
+Do not add code that:
 
-- Login bypass.
-- CAPTCHA bypass.
-- Rate-limit evasion.
-- Aggressive scraping.
-- Video downloading.
+- Works around platform access controls.
+- Stores account sessions, secrets, or private account material in the repo.
+- Mirrors profiles or downloads videos.
+- Performs non-approved automated collection.
 
 Manual caption ingestion is the correct first step unless a later decision explicitly changes the ingestion model.

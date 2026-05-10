@@ -10,7 +10,7 @@ The first ingestion flow is manual by design:
 4. App extracts likely recipe fields.
 5. App indexes searchable text.
 
-This is the simplest practical path. It validates the product without taking on scraping fragility first.
+This is the simplest practical path. It validates the product without taking on platform-sensitive collection work first.
 
 ## Extraction
 
@@ -39,25 +39,11 @@ Index:
 
 Search should return the original Instagram URL with every result.
 
-## Browser-Assisted Instagram Text Ingestion
+## Approved Source Text Ingestion
 
-The production ingestion path may use an authorized Playwright browser session on Ubuntu.
+The active production path is manual or creator-provided text import. The app stores source text and links, then transforms that source material into searchable recipe records.
 
-- Store session state outside the repo at `INSTAGRAM_SESSION_STATE_PATH`.
-- Do not store Instagram credentials in the repo or in documentation.
-- Do not download videos or media; block image, media, and font resources where practical.
-- Store fetched visible post text as raw source material before parsing.
-- Treat recipe extraction and search indexing as derived data that can be rebuilt locally.
-
-Backfill discovers visible `/p/...` and `/reel/...` URLs from each configured profile and fetches text for each post. Incremental sync checks a smaller recent window and stops after enough known posts are seen.
-
-Operational finding from the first full Ubuntu backfill attempt:
-
-- Profile discovery can find post URLs while individual post pages still render empty or as Instagram error pages in headless Chromium.
-- Do not treat discovered URLs as captured content.
-- Do not store Instagram error pages such as `Sorry, this page isn't available` as raw posts.
-- If a full run returns mostly `No caption text extracted`, stop and inspect the authorized browser session before retrying a large backfill.
-- A reliable large backfill likely needs a refreshed authorized browser session, an operator-assisted browser mode, or another creator-authorized/API path.
+Any future automated provider must be reviewed before implementation and must use an approved API, creator-provided export, or another clearly permitted data source. Do not add browser-session capture or platform-control workarounds to this repo.
 
 ## Later Ingestion Options
 
@@ -65,7 +51,6 @@ Later options can include:
 
 - Creator-authorized data access.
 - Official APIs where practical.
-- Browser-assisted import.
 - Limited public metadata import.
 - Semi-manual tools that reduce copy/paste.
 
@@ -82,13 +67,12 @@ python -m app.cli import-caption --creator HANDLE --url URL --caption-file FILE
 
 `sync-creators` reads `config/creators.yml`, upserts creators into the database, detects newly configured creators, and chooses backfill or incremental sync.
 
-Unauthenticated public Instagram scraping is intentionally not implemented. `app/ingestion/instagram_public.py` is a stubbed provider that records a clear status message instead of depending on brittle or abusive scraping. Use `--provider instagram-browser` after creating an authorized browser session.
+Unauthenticated public Instagram collection is intentionally not implemented. `app/ingestion/instagram_public.py` is a stubbed provider that records a clear status message instead of depending on brittle or non-approved automation.
 
 ## Explicit Non-Goals
 
 - Do not download videos.
 - Do not mirror Instagram profiles.
-- Do not build login bypass.
-- Do not build CAPTCHA bypass.
-- Do not build rate-limit evasion.
-- Do not build aggressive scraping behavior.
+- Do not automate around platform access controls.
+- Do not store account sessions, secrets, or private account material in this repo.
+- Do not add non-approved collection behavior.

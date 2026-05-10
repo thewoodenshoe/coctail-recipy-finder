@@ -2,9 +2,9 @@
 
 ## Risk Area
 
-Instagram ingestion is a risk area. Reliability, platform rules, account safety, and maintenance cost matter.
+Instagram source ingestion is a risk area. Reliability, platform rules, account safety, and maintenance cost matter.
 
-Do not start by building a scraper.
+Do not start by building automated collection.
 
 ## MVP Ingestion
 
@@ -16,7 +16,7 @@ The first MVP should allow:
 4. Extract likely recipe fields from the pasted text.
 5. Index searchable text.
 
-This avoids brittle scraping and still validates the core product: searchable cocktail recipe discovery.
+This validates the core product: searchable cocktail recipe discovery.
 
 ## Later Options
 
@@ -24,16 +24,15 @@ Later ingestion options can include:
 
 - Creator-authorized access.
 - Official APIs where practical.
-- Browser-assisted import.
 - Limited public metadata import.
-- Semi-manual workflows that reduce copy/paste without bypassing controls.
+- Semi-manual workflows that reduce copy/paste without working around platform controls.
 
 ## Boundaries
 
 Do not download videos.
 
-Do not build abusive scraping behavior.
+Do not build non-approved automated collection behavior.
 
-Do not build login bypass, CAPTCHA bypass, rate-limit evasion, credential farming, or systems designed to avoid platform controls.
+Do not store account sessions, secrets, private account material, or systems designed to work around platform controls.
 
 If automated ingestion is proposed later, evaluate it against reliability, compliance, maintenance cost, and product value before implementation.

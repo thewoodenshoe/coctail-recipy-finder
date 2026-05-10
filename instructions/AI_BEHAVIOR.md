@@ -26,7 +26,7 @@ Agents should not:
 - Treat every user suggestion as fixed.
 - Over-engineer the first version.
 - Add dependencies without a clear reason.
-- Build scraping behavior that bypasses login, CAPTCHA, rate limits, or platform controls.
+- Build automated collection that works around platform controls.
 - Store secrets in the repository.
 
 ## Before Major Implementation

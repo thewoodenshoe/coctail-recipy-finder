@@ -5,10 +5,10 @@ from app.models import Creator
 
 
 class InstagramPublicProvider:
-    """Best-effort placeholder for future authorized or browser-assisted import.
+    """Placeholder for a future approved source-text provider.
 
-    Direct Instagram scraping is intentionally not implemented here. The MVP must not
-    depend on brittle scraping, login bypasses, CAPTCHA bypasses, or video downloads.
+    Public Instagram collection is intentionally not implemented here. The MVP
+    depends on manual or creator-provided source text.
     """
 
     def backfill(self, creator: Creator) -> IngestionResult:
@@ -16,7 +16,7 @@ class InstagramPublicProvider:
             posts=[],
             message=(
                 f"Public Instagram backfill for @{creator.handle} is not implemented. "
-                "Use manual caption import or a future authorized/browser-assisted importer."
+                "Use manual caption import or a future approved source-text provider."
             ),
         )
 

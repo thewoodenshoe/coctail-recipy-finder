@@ -8,7 +8,7 @@ Status: Accepted
 
 Decision: The first MVP will allow manual ingestion by creator handle, Instagram post URL, and pasted caption text.
 
-Reasoning: Manual ingestion validates the core product without taking on scraping risk, account risk, platform compliance issues, or brittle automation too early.
+Reasoning: Manual ingestion validates the core product without taking on platform compliance issues, account risk, or brittle automation too early.
 
 Consequences:
 
@@ -61,19 +61,33 @@ Consequences:
 - Local test data should be treated as disposable.
 - Any real ingestion job must be designed to run safely on Ubuntu.
 
-## 0005 - Stub Public Instagram Provider Until Authorized Path Exists
+## 0005 - Stub Public Instagram Provider Until Approved Import Path Exists
 
 Status: Accepted
 
 Decision: The initial app ships with a manual ingestion provider and a stubbed public Instagram provider.
 
-Reasoning: Automated public Instagram scraping is brittle and platform-sensitive. The MVP should validate creator registry, manual import, extraction, indexing, search, and deployment before taking on ingestion risk.
+Reasoning: Automated public Instagram collection is brittle and platform-sensitive. The MVP should validate creator registry, manual import, extraction, indexing, search, and deployment before taking on ingestion risk.
 
 Consequences:
 
 - `sync-creators` records backfill/incremental status but does not fetch Instagram posts yet.
 - Manual import is the working content path.
-- Future authorized/API/browser-assisted import can be added behind the existing ingestion interface.
+- Future API or creator-provided import can be added behind the existing ingestion interface.
+
+## 0008 - Remove Browser-Based Collection From Active Code
+
+Status: Accepted
+
+Decision: Remove the active browser-based ingestion commands, provider, related configuration, automation dependency, and related deployment instructions.
+
+Reasoning: The product is a searchable recipe index that links back to original Instagram posts. Active browser-based collection is a platform-sensitive implementation detail and creates unnecessary compliance and security review risk for the MVP.
+
+Consequences:
+
+- Manual caption/source-text import remains the supported working ingestion path.
+- `sync-creators` can still track configured creators and status through the stub provider.
+- Future ingestion must use an approved API, creator-provided export, or another explicitly reviewed data source.
 
 ## 0006 - Keep Direct-Port MVP On 8000, Not 8080
 

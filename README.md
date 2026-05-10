@@ -60,8 +60,7 @@ Run tests:
 - Manual caption import through the web UI and CLI.
 - Deterministic recipe extraction from pasted caption text.
 - Creator sync command that detects new configured creators.
-- Browser-assisted raw text download for authorized Instagram sessions.
-- Stubbed public Instagram ingestion interface with clear limitations.
+- Stubbed external-source ingestion interface with clear limitations.
 - systemd service/timer templates for Ubuntu deployment.
 
 ## Not Built Yet
@@ -71,12 +70,13 @@ The following are intentionally not implemented yet:
 - Authentication.
 - AI extraction pipeline.
 - nginx or Cloudflare integration for this project.
+- Automated Instagram collection.
 
-Do not treat the lack of automated Instagram scraping as a bug. The working MVP path is manual caption import plus a clean ingestion interface for later authorized/API/browser-assisted import.
+Do not treat the lack of automated Instagram collection as a bug. The working MVP path is manual caption import plus a clean ingestion interface for later approved API or creator-provided export workflows.
 
 ## Current Network Assumption
 
-The Ubuntu server is the production host for this project. Local development and unit tests can run on the developer machine, but production data, ingestion runs, and any future Instagram-related collection work should happen on Ubuntu.
+The Ubuntu server is the production host for this project. Local development and unit tests can run on the developer machine, but production data and scheduled jobs should happen on Ubuntu.
 
 For the early direct-IP MVP, use TCP port `8000` for this project. Do not use ports already occupied by the existing CHS Finds/CHS Spots setup, especially `80`, `443`, `3000`, `3001`, or `3456`.
 
