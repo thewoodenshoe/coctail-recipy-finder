@@ -15,6 +15,7 @@ def main() -> None:
     subparsers.add_parser("init-db", help="Initialize database schema and search index")
     sync_parser = subparsers.add_parser("sync-creators", help="Sync creators from config/creators.yml")
     sync_parser.add_argument("--provider", default="public", choices=["public", "instagram-public", "browser", "instagram-browser"])
+    sync_parser.add_argument("--force-backfill", action="store_true", help="Run backfill for active creators even if they were previously marked backfilled")
 
     auth_parser = subparsers.add_parser("instagram-auth", help="Create an authorized Instagram browser session outside the repo")
     auth_parser.add_argument("--headless", action="store_true")
@@ -38,7 +39,12 @@ def main() -> None:
         init_database()
         with session_scope() as session:
             provider = provider_for_name(args.provider)
-            actions = sync_creators_from_config(session, settings.creator_config_path, provider=provider)
+            actions = sync_creators_from_config(
+                session,
+                settings.creator_config_path,
+                provider=provider,
+                force_backfill=args.force_backfill,
+            )
             for action in actions:
                 detail = f" - {action.message}" if action.message else ""
                 print(f"{action.handle}: {action.action} -> {action.status}{detail}")

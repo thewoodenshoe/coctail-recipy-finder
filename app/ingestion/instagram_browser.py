@@ -8,7 +8,8 @@ from app.ingestion.base import IngestedPost, IngestionResult
 from app.models import Creator
 
 
-POST_URL_RE = re.compile(r"https://www\.instagram\.com/(p|reel)/[A-Za-z0-9_-]+/?")
+ABSOLUTE_POST_URL_RE = re.compile(r"https://www\.instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/?")
+RELATIVE_POST_URL_RE = re.compile(r"/(?:p|reel)/[A-Za-z0-9_-]+/?")
 BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
 
 
@@ -117,15 +118,15 @@ class InstagramBrowserProvider:
 
         while len(urls) < max_posts and stable_scrolls < 5:
             before = len(urls)
-            for href in page.locator("a").evaluate_all("(links) => links.map((a) => a.href)"):
-                match = POST_URL_RE.match(str(href))
-                if match:
-                    normalized = str(href).split("?")[0].rstrip("/") + "/"
-                    if normalized not in seen:
-                        seen.add(normalized)
-                        urls.append(normalized)
-                        if len(urls) >= max_posts:
-                            break
+            candidates = page.locator("a").evaluate_all("(links) => links.map((a) => a.href)")
+            candidates.extend(ABSOLUTE_POST_URL_RE.findall(page.content()))
+            candidates.extend(RELATIVE_POST_URL_RE.findall(page.content()))
+            for candidate in _normalize_post_url_candidates(candidates):
+                if candidate not in seen:
+                    seen.add(candidate)
+                    urls.append(candidate)
+                    if len(urls) >= max_posts:
+                        break
 
             page.mouse.wheel(0, 2500)
             page.wait_for_timeout(1500)
@@ -139,6 +140,24 @@ def _abort_heavy_resources(route) -> None:
         route.abort()
         return
     route.continue_()
+
+
+def _normalize_post_url_candidates(candidates: list[str]) -> list[str]:
+    urls: list[str] = []
+    for candidate in candidates:
+        value = str(candidate)
+        if value.startswith("http"):
+            match = ABSOLUTE_POST_URL_RE.search(value)
+            if not match:
+                continue
+            url = match.group(0)
+        else:
+            match = RELATIVE_POST_URL_RE.search(value)
+            if not match:
+                continue
+            url = "https://www.instagram.com" + match.group(0)
+        urls.append(url.split("?")[0].rstrip("/") + "/")
+    return urls
 
 
 def _clean_page_text(text: str) -> str:

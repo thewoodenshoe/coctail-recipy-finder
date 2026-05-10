@@ -162,6 +162,7 @@ def sync_creators_from_config(
     session: Session,
     config_path,
     provider: IngestionProvider | None = None,
+    force_backfill: bool = False,
 ) -> list[SyncAction]:
     provider = provider or InstagramPublicProvider()
     configs = load_creator_config(config_path)
@@ -171,7 +172,7 @@ def sync_creators_from_config(
     for config in configs:
         creator, _is_new = upsert_creator(session, config)
         session.flush()
-        decision = sync_decision(creator)
+        decision = "backfill" if force_backfill and creator.active else sync_decision(creator)
         if decision == "skip":
             creator.sync_status = "skipped_inactive"
             actions.append(SyncAction(creator.handle, "skip", "skipped"))

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from app.ingestion.instagram_browser import _clean_page_text, _extract_best_caption, _post_id_from_url
+from app.ingestion.instagram_browser import (
+    _clean_page_text,
+    _extract_best_caption,
+    _normalize_post_url_candidates,
+    _post_id_from_url,
+)
 
 
 def test_browser_text_helpers_extract_clean_caption():
@@ -25,3 +30,18 @@ Log in to like or comment.
 def test_post_id_from_instagram_url():
     assert _post_id_from_url("https://www.instagram.com/p/DXnYlmJjk48/") == "DXnYlmJjk48"
     assert _post_id_from_url("https://www.instagram.com/reel/ABC123/") == "ABC123"
+
+
+def test_normalize_relative_and_absolute_post_urls():
+    urls = _normalize_post_url_candidates(
+        [
+            "https://www.instagram.com/reel/DXnYlmJjk48/?x=1",
+            "/p/ABC123/",
+            "/not-a-post/ABC123/",
+        ]
+    )
+
+    assert urls == [
+        "https://www.instagram.com/reel/DXnYlmJjk48/",
+        "https://www.instagram.com/p/ABC123/",
+    ]

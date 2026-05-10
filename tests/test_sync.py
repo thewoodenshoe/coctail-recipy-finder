@@ -78,6 +78,37 @@ def test_sync_records_failures_without_crashing(db_session, tmp_path: Path):
     assert by_handle["badcreator"].status == "failed"
 
 
+def test_force_backfill_overrides_existing_backfill_status(db_session, tmp_path: Path):
+    old = Creator(
+        handle="oldcreator",
+        profile_url="https://www.instagram.com/oldcreator/",
+        active=True,
+        backfill_completed_at=datetime.now(timezone.utc),
+        sync_status="backfilled",
+    )
+    db_session.add(old)
+    db_session.commit()
+
+    path = tmp_path / "creators.yml"
+    path.write_text(
+        """
+creators:
+  - handle: oldcreator
+    profile_url: "https://www.instagram.com/oldcreator/"
+    active: true
+"""
+    )
+
+    actions = sync_creators_from_config(
+        db_session,
+        path,
+        provider=FailingProvider(),
+        force_backfill=True,
+    )
+
+    assert actions[0].action == "backfill"
+
+
 def test_upsert_post_preserves_raw_text_and_reparse_updates_search(db_session):
     creator = Creator(
         handle="notjustabartender",
