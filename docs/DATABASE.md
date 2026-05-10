@@ -61,6 +61,7 @@ Suggested columns:
 - `id`
 - `post_id`
 - `drink_title`
+- `base_spirits_json`
 - `ingredients_text`
 - `instructions_text`
 - `garnish_text`

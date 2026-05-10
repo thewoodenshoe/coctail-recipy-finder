@@ -20,6 +20,17 @@ BASE_SPIRITS = [
     "aperol",
 ]
 
+BRAND_SPIRIT_MAP = {
+    "four roses": "bourbon",
+    "four roses oeso": "bourbon",
+    "mijenta": "tequila",
+    "mijenta tequila": "tequila",
+    "mijenta reposado": "tequila",
+    "mijenta tequila blanco": "tequila",
+    "luxardo del santo": "herbal liqueur",
+    "angostura": "bitters",
+}
+
 MEASUREMENT_RE = re.compile(
     r"(?<![A-Za-z0-9])(\d+([./]\d+)?|\.\d+|one|two|three|four|five|six|half|¼|½|¾)\s*"
     r"(oz|ounce|ounces|ml|dash|dashes|barspoon|tsp|tbsp|part|parts)\b",
@@ -38,6 +49,7 @@ HASHTAG_RE = re.compile(r"#([A-Za-z0-9_]+)")
 class ExtractedRecipe:
     drink_name: str | None
     base_spirit: str | None
+    base_spirits: list[str]
     ingredients: list[str]
     method: str | None
     garnish: str | None
@@ -47,6 +59,9 @@ class ExtractedRecipe:
 
     def ingredients_json(self) -> str:
         return json.dumps(self.ingredients, ensure_ascii=True)
+
+    def base_spirits_json(self) -> str:
+        return json.dumps(self.base_spirits, ensure_ascii=True)
 
 
 def extract_recipe(caption_text: str) -> ExtractedRecipe:
@@ -58,8 +73,9 @@ def extract_recipe(caption_text: str) -> ExtractedRecipe:
     scoped_lines = recipe_block.recipe_lines if recipe_block else lines
 
     drink_name = recipe_block.drink_name if recipe_block else _extract_drink_name(lines)
-    base_spirit = _extract_base_spirit(lower_text)
     ingredients = _extract_ingredients(scoped_lines, recipe_block)
+    base_spirits = _extract_base_spirits("\n".join([*ingredients, drink_name or "", lower_text]))
+    base_spirit = base_spirits[0] if base_spirits else None
     method = _extract_method(scoped_lines, normalized_text, recipe_block)
     garnish = _extract_garnish(scoped_lines)
     tags = [tag.lower() for tag in HASHTAG_RE.findall(normalized_text)]
@@ -79,6 +95,7 @@ def extract_recipe(caption_text: str) -> ExtractedRecipe:
     return ExtractedRecipe(
         drink_name=drink_name,
         base_spirit=base_spirit,
+        base_spirits=base_spirits,
         ingredients=ingredients,
         method=method,
         garnish=garnish,
@@ -188,10 +205,31 @@ def _clean_title_candidate(line: str) -> str | None:
 
 
 def _extract_base_spirit(lower_text: str) -> str | None:
+    spirits = _extract_base_spirits(lower_text)
+    return spirits[0] if spirits else None
+
+
+def _extract_base_spirits(text: str) -> list[str]:
+    lower_text = text.lower()
+    found: list[str] = []
     for spirit in BASE_SPIRITS:
         if re.search(rf"\b{re.escape(spirit)}\b", lower_text):
-            return spirit
-    return None
+            found.append(spirit)
+    for brand, spirit in BRAND_SPIRIT_MAP.items():
+        if re.search(rf"\b{re.escape(brand)}\b", lower_text):
+            found.append(spirit)
+    return _dedupe_spirits(found)
+
+
+def _dedupe_spirits(spirits: list[str]) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for spirit in spirits:
+        if spirit in seen:
+            continue
+        seen.add(spirit)
+        deduped.append(spirit)
+    return deduped
 
 
 def _extract_ingredients(lines: list[str], recipe_block: RecipeBlock | None = None) -> list[str]:

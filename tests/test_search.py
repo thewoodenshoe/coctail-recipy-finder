@@ -17,6 +17,7 @@ def test_search_index_returns_imported_caption(db_session):
     assert results
     assert results[0]["id"] == post.id
     assert results[0]["creator_handle"] == "notjustabartender"
+    assert results[0]["base_spirits_json"] == '["gin"]'
 
 
 def test_search_excludes_non_recipe_posts_without_ingredients(db_session):

@@ -9,7 +9,7 @@
     {% if post.recipe %}
       <dl class="details">
         <dt>Base spirit</dt>
-        <dd>{{ post.recipe.base_spirit or "Unknown" }}</dd>
+        <dd>{{ base_spirits|join(", ") if base_spirits else "Unknown" }}</dd>
         <dt>Ingredients</dt>
         <dd>
           {% if ingredients %}

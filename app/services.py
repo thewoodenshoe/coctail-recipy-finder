@@ -131,6 +131,7 @@ def upsert_post(session: Session, creator: Creator, ingested: IngestedPost) -> P
 
     post.recipe.drink_name = recipe_data.drink_name
     post.recipe.base_spirit = recipe_data.base_spirit
+    post.recipe.base_spirits_json = recipe_data.base_spirits_json()
     post.recipe.ingredients_json = recipe_data.ingredients_json()
     post.recipe.method = recipe_data.method
     post.recipe.garnish = recipe_data.garnish
@@ -151,6 +152,7 @@ def reparse_posts(session: Session) -> int:
             post.recipe = Recipe(post_id=post.id, ingredients_json="[]")
         post.recipe.drink_name = recipe_data.drink_name
         post.recipe.base_spirit = recipe_data.base_spirit
+        post.recipe.base_spirits_json = recipe_data.base_spirits_json()
         post.recipe.ingredients_json = recipe_data.ingredients_json()
         post.recipe.method = recipe_data.method
         post.recipe.garnish = recipe_data.garnish

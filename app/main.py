@@ -103,14 +103,19 @@ def post_detail(post_id: int, request: Request, db: Session = Depends(get_db)):
     if post is None:
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     ingredients = []
+    base_spirits = []
     if post.recipe:
         try:
             ingredients = json.loads(post.recipe.ingredients_json or "[]")
         except json.JSONDecodeError:
             ingredients = [post.recipe.ingredients_json]
+        try:
+            base_spirits = json.loads(post.recipe.base_spirits_json or "[]")
+        except json.JSONDecodeError:
+            base_spirits = [post.recipe.base_spirit]
     return templates.TemplateResponse(
         "post_detail.html",
-        {"request": request, "post": post, "ingredients": ingredients},
+        {"request": request, "post": post, "ingredients": ingredients, "base_spirits": base_spirits},
     )
 
 
@@ -120,7 +125,12 @@ def _decorate_result(row: dict) -> dict:
         ingredients = json.loads(row.get("ingredients_json") or "[]")
     except json.JSONDecodeError:
         ingredients = [row.get("ingredients_json")]
+    try:
+        base_spirits = json.loads(row.get("base_spirits_json") or "[]")
+    except json.JSONDecodeError:
+        base_spirits = [row.get("base_spirit")]
     row["ingredients"] = ingredients
+    row["base_spirits"] = [spirit for spirit in base_spirits if spirit]
     row["short_caption"] = (row.get("caption_text") or "")[:220]
     row["show_garnish"] = bool(row.get("garnish") and row.get("garnish") != row.get("method"))
     return row

@@ -18,6 +18,12 @@ def update_post_search_index(session: Session, post: Post) -> None:
             ingredients = " ".join(json.loads(recipe.ingredients_json or "[]"))
         except json.JSONDecodeError:
             ingredients = recipe.ingredients_json or ""
+        try:
+            base_spirits = " ".join(json.loads(recipe.base_spirits_json or "[]"))
+        except json.JSONDecodeError:
+            base_spirits = recipe.base_spirits_json or ""
+    else:
+        base_spirits = ""
 
     tags = " ".join(re.findall(r"#([A-Za-z0-9_]+)", post.caption_text or ""))
     session.execute(text("DELETE FROM search_index WHERE post_id = :post_id"), {"post_id": post.id})
@@ -40,7 +46,7 @@ def update_post_search_index(session: Session, post: Post) -> None:
             "source_url": post.source_url,
             "caption_text": post.caption_text,
             "drink_name": recipe.drink_name if recipe else "",
-            "base_spirit": recipe.base_spirit if recipe else "",
+            "base_spirit": base_spirits or (recipe.base_spirit if recipe else ""),
             "ingredients": ingredients,
             "method": recipe.method if recipe else "",
             "tags": tags,
@@ -67,6 +73,7 @@ def search_posts(session: Session, query: str = "", creator_handle: str | None =
                 creators.handle AS creator_handle,
                 recipes.drink_name,
                 recipes.base_spirit,
+                recipes.base_spirits_json,
                 recipes.ingredients_json,
                 recipes.method,
                 recipes.garnish,
@@ -90,6 +97,7 @@ def search_posts(session: Session, query: str = "", creator_handle: str | None =
                 creators.handle AS creator_handle,
                 recipes.drink_name,
                 recipes.base_spirit,
+                recipes.base_spirits_json,
                 recipes.ingredients_json,
                 recipes.method,
                 recipes.garnish,

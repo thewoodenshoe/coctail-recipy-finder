@@ -91,3 +91,32 @@ Toast rice, spices, and almonds together in a pan on medium to high heat. Store 
     assert "500ml Mijenta Reposado" in recipe.ingredients
     assert recipe.method is not None
     assert recipe.method.startswith("Toast rice")
+    assert recipe.base_spirits == ["tequila"]
+
+
+def test_extract_brand_names_to_normalized_base_spirits():
+    caption = """KENTUCKY BUCK
+3-4 strawberries
+.75oz | 22.5ml lemon juice
+.75oz | 22.5ml simple syrup
+2oz | 60ml Four Roses OESO Single Barrel
+Ginger Beer
+In a tin, muddle strawberries. Garnish with a strawberry.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Kentucky Buck"
+    assert recipe.base_spirit == "bourbon"
+    assert recipe.base_spirits == ["bourbon"]
+
+
+def test_extract_multiple_base_spirits():
+    caption = """SPLIT BASE SOUR
+1 oz gin
+1 oz rum
+.75 oz lemon juice
+Shake with ice.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.base_spirits == ["gin", "rum"]

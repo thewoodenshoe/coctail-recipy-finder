@@ -65,6 +65,7 @@ class Recipe(Base):
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"), unique=True, nullable=False)
     drink_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     base_spirit: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    base_spirits_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     ingredients_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     method: Mapped[str | None] = mapped_column(Text, nullable=True)
     garnish: Mapped[str | None] = mapped_column(Text, nullable=True)

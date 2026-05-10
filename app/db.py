@@ -60,6 +60,10 @@ def migrate_sqlite_schema(db_engine: Engine) -> None:
         }
         if "extra_instagram_text" not in recipe_columns:
             connection.execute(text("ALTER TABLE recipes ADD COLUMN extra_instagram_text TEXT"))
+        if "base_spirits_json" not in recipe_columns:
+            connection.execute(
+                text("ALTER TABLE recipes ADD COLUMN base_spirits_json TEXT NOT NULL DEFAULT '[]'")
+            )
 
 
 def create_search_index(db_engine: Engine) -> None:

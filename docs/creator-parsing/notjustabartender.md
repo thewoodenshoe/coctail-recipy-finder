@@ -21,6 +21,8 @@ The intro/context is useful but should not be displayed as the primary search re
 - Ingredient lines may include measurements, gram/cup quantities, counted produce, or short unmeasured items such as `Ginger Beer`.
 - Treat method text as the lines after the ingredient block beginning with action words like `Combine`, `In a tin`, `Toast`, or `Serve`.
 - If no ingredient block exists, treat the post as non-recipe for index display.
+- Normalize known brand names to base spirits where possible, for example `Four Roses` -> `bourbon` and `Mijenta` -> `tequila`.
+- Store base spirits as a list because recipes can be split-base.
 
 ## Sample Corrections
 
