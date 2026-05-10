@@ -182,6 +182,30 @@ Serve by shaking up 2 at a time using a cocktail shaker
     assert recipe.method.startswith("Mix in a pitcher")
 
 
+def test_extract_join_jules_fountain_title_skips_audio_line():
+    caption = """join_jules
+•
+Follow
+Piero Umiliani · Volto di donna
+This is your sign to get the party fountain
+Before they sell out, it’s time to add one to cart before your next party.
+To your fountain add:
+1 jar of olives
+1 jar of cocktail onions
+1 750 ml bottle of London Dry gin
+Splash of dry vermouth
+Add a few ice cubes to the bottom, turn it on, and grab a glass!
+Xx, happy hosting
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Party Fountain"
+    assert "1 jar of olives" in recipe.ingredients
+    assert "Splash of dry vermouth" in recipe.ingredients
+    assert recipe.base_spirits == ["gin"]
+    assert recipe.method == "Add a few ice cubes to the bottom, turn it on, and grab a glass!"
+
+
 def test_extract_kentuckyginger_mint_julep_unmeasured_block_ingredients():
     caption = """kentuckyginger
 MINT JULEP

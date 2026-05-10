@@ -235,6 +235,10 @@ def _find_labeled_recipe_block(lines: list[str]) -> RecipeBlock | None:
 
 def _title_before_label(lines: list[str], label_index: int) -> str | None:
     window = lines[max(0, label_index - 8) : label_index]
+    for line in window:
+        party_fountain = re.search(r"\b(?:get|bring|use)\s+the\s+([A-Za-z\s]+fountain)\b", line, re.IGNORECASE)
+        if party_fountain:
+            return party_fountain.group(1).strip().title()
     for line in reversed(window):
         embedded = _extract_embedded_drink_title(line)
         if embedded:
@@ -259,6 +263,8 @@ def _extract_embedded_drink_title(line: str) -> str | None:
 
 def _looks_like_sentence_context(line: str) -> bool:
     lower = line.lower()
+    if " · " in line:
+        return True
     if len(line) > 64:
         return True
     return any(
@@ -411,6 +417,8 @@ def _looks_like_method_start(line: str) -> bool:
 def _is_instagram_tail_line(line: str) -> bool:
     lower = line.lower()
     if lower in {"messages", "follow", "meta", "about", "blog", "jobs", "help", "api", "privacy", "terms"}:
+        return True
+    if lower in {"xx, happy hosting", "happy hosting!!", "cheers!"}:
         return True
     if line == "•":
         return True
