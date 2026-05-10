@@ -360,16 +360,25 @@ def update_gold_recipe_search_index(
     )
 
 
-def search_gold_recipes(session: Session, query: str = "", limit: int = 50) -> list[dict[str, Any]]:
+def search_gold_recipes(
+    session: Session,
+    query: str = "",
+    creator_handle: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
     fts_query = _fts_query(query)
     params: dict[str, Any] = {"limit": limit}
+    filters = ["gold_recipes.status = 'active'"]
+    if creator_handle:
+        filters.append("gold_recipes.creator_handle = :creator_handle")
+        params["creator_handle"] = creator_handle
     if fts_query:
         params["fts_query"] = fts_query
-        where = "gold_recipe_search_index MATCH :fts_query AND gold_recipes.status = 'active'"
+        filters.append("gold_recipe_search_index MATCH :fts_query")
         rank = "bm25(gold_recipe_search_index, 5.0, 1.0, 3.0, 4.0, 2.0, 1.2, 0.5, 0.1) AS rank"
     else:
-        where = "gold_recipes.status = 'active'"
         rank = "0 AS rank"
+    where = " AND ".join(filters)
     rows = session.execute(
         text(
             f"""

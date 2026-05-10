@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.drink_title or "Recipe" }} - Cocktail Recipe Finder{% endblock %}
+{% block content %}
+  <article class="panel">
+    <div class="result-meta">@{{ recipe.creator_handle }}</div>
+    <h1>{{ recipe.drink_title or "Untitled cocktail post" }}</h1>
+    <p><a href="{{ recipe.source_url }}" target="_blank" rel="noopener noreferrer">Open original Instagram post</a></p>
+
+    <dl class="details">
+      <dt>Base spirits</dt>
+      <dd>{{ base_spirits|join(", ") if base_spirits else "Unknown" }}</dd>
+      <dt>Ingredients</dt>
+      <dd>
+        {% if ingredients %}
+          <ul>
+            {% for ingredient in ingredients %}
+              <li>{{ ingredient.raw_text if ingredient.raw_text is defined else ingredient }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          Unknown
+        {% endif %}
+      </dd>
+      <dt>Method</dt>
+      <dd>{{ recipe.method or "Unknown" }}</dd>
+      <dt>Garnish</dt>
+      <dd>{{ recipe.garnish or "Unknown" }}</dd>
+      <dt>Status</dt>
+      <dd>{{ recipe.status }}</dd>
+      <dt>Quality</dt>
+      <dd>{{ recipe.quality_score or "Unknown" }}</dd>
+    </dl>
+
+    {% if recipe.intro_text %}
+      <h2>Context</h2>
+      <pre class="caption">{{ recipe.intro_text }}</pre>
+    {% endif %}
+  </article>
+{% endblock %}

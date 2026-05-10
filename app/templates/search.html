@@ -24,7 +24,7 @@
         {% for result in results %}
           <article class="result-card">
             <div class="result-meta">@{{ result.creator_handle }}</div>
-            <h2><a href="/posts/{{ result.id }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h2>
+            <h2><a href="{{ result.detail_path }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h2>
             <div class="tags">
               {% for spirit in result.base_spirits %}
                 <span>{{ spirit }}</span>

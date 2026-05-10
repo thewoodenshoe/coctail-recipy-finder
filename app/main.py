@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session, joinedload
 from app.config import BASE_DIR
 from app.db import get_db, init_database
 from app.creators import load_creator_config
-from app.models import Creator, Post
-from app.search import search_posts
+from app.gold import search_gold_recipes
+from app.models import Creator, GoldRecipe, Post
 from app.services import import_post
 
 
@@ -30,7 +30,7 @@ def startup() -> None:
 @app.get("/")
 def home(request: Request, q: str = "", creator: str = "", db: Session = Depends(get_db)):
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
-    results = search_posts(db, q, creator or None)
+    results = search_gold_recipes(db, q, creator or None)
     return templates.TemplateResponse(
         "search.html",
         {
@@ -119,18 +119,52 @@ def post_detail(post_id: int, request: Request, db: Session = Depends(get_db)):
     )
 
 
+@app.get("/gold/{gold_id}")
+def gold_detail(gold_id: int, request: Request, db: Session = Depends(get_db)):
+    recipe = db.scalar(select(GoldRecipe).where(GoldRecipe.id == gold_id))
+    if recipe is None:
+        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+    ingredients = []
+    base_spirits = []
+    try:
+        ingredients = json.loads(recipe.ingredients_json or "[]")
+    except json.JSONDecodeError:
+        ingredients = []
+    try:
+        base_spirits = json.loads(recipe.base_spirits_json or "[]")
+    except json.JSONDecodeError:
+        base_spirits = []
+    return templates.TemplateResponse(
+        "gold_detail.html",
+        {
+            "request": request,
+            "recipe": recipe,
+            "ingredients": ingredients,
+            "base_spirits": base_spirits,
+        },
+    )
+
+
 def _decorate_result(row: dict) -> dict:
     ingredients = []
     try:
         ingredients = json.loads(row.get("ingredients_json") or "[]")
     except json.JSONDecodeError:
         ingredients = [row.get("ingredients_json")]
+    display_ingredients = []
+    for ingredient in ingredients:
+        if isinstance(ingredient, dict):
+            display_ingredients.append(ingredient.get("raw_text") or ingredient.get("name") or "")
+        else:
+            display_ingredients.append(ingredient)
     try:
         base_spirits = json.loads(row.get("base_spirits_json") or "[]")
     except json.JSONDecodeError:
-        base_spirits = [row.get("base_spirit")]
-    row["ingredients"] = ingredients
+        base_spirits = []
+    row["ingredients"] = [ingredient for ingredient in display_ingredients if ingredient]
     row["base_spirits"] = [spirit for spirit in base_spirits if spirit]
+    row["drink_name"] = row.get("drink_name") or row.get("drink_title")
+    row["detail_path"] = f"/gold/{row['id']}" if row.get("drink_title") is not None else f"/posts/{row['id']}"
     row["short_caption"] = (row.get("caption_text") or "")[:220]
     row["show_garnish"] = bool(row.get("garnish") and row.get("garnish") != row.get("method"))
     return row
