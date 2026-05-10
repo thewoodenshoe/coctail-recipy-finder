@@ -14,6 +14,7 @@ class IngestedPost:
     raw_text: str | None = None
     external_post_id: str | None = None
     posted_at: datetime | None = None
+    fetch_seconds: float | None = None
 
 
 @dataclass(frozen=True)

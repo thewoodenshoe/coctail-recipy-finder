@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from time import perf_counter
 
 from app.config import get_settings
 from app.ingestion.base import IngestedPost, IngestionResult
@@ -30,6 +31,63 @@ def save_instagram_session(session_state_path: Path, headless: bool = False) -> 
         input()
         context.storage_state(path=str(session_state_path.expanduser()))
         browser.close()
+
+
+def discover_creator_post_urls(
+    session_state_path: Path,
+    profile_url: str,
+    limit: int,
+) -> list[str]:
+    if not session_state_path.expanduser().exists():
+        raise RuntimeError(f"Instagram session state not found at {session_state_path}")
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError("Playwright is not installed. Run: pip install -r requirements.txt") from exc
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context(storage_state=str(session_state_path.expanduser()))
+        context.route("**/*", _abort_heavy_resources)
+        page = context.new_page()
+        page.goto(profile_url.rstrip("/") + "/", wait_until="domcontentloaded", timeout=45000)
+        urls = _discover_post_urls_from_page(page, max_posts=limit)
+        browser.close()
+    if not urls:
+        raise RuntimeError("No Instagram post URLs discovered")
+    return urls
+
+
+def fetch_instagram_post_text(session_state_path: Path, source_url: str) -> IngestedPost:
+    if not session_state_path.expanduser().exists():
+        raise RuntimeError(f"Instagram session state not found at {session_state_path}")
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError("Playwright is not installed. Run: pip install -r requirements.txt") from exc
+
+    started = perf_counter()
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context(storage_state=str(session_state_path.expanduser()))
+        context.route("**/*", _abort_heavy_resources)
+        page = context.new_page()
+        page.goto(source_url, wait_until="domcontentloaded", timeout=45000)
+        page.wait_for_timeout(1200)
+        raw_text = _clean_page_text(page.locator("body").inner_text(timeout=15000))
+        browser.close()
+
+    caption_text = _extract_best_caption(raw_text)
+    if not caption_text:
+        raise RuntimeError(f"No caption text extracted for {source_url}")
+    elapsed = perf_counter() - started
+    return IngestedPost(
+        source_url=source_url,
+        caption_text=caption_text,
+        raw_text=raw_text,
+        external_post_id=_post_id_from_url(source_url),
+        fetch_seconds=elapsed,
+    )
 
 
 class InstagramBrowserProvider:
@@ -70,7 +128,7 @@ class InstagramBrowserProvider:
             page = context.new_page()
             profile_url = creator.profile_url.rstrip("/") + "/"
             page.goto(profile_url, wait_until="domcontentloaded", timeout=45000)
-            urls = self._discover_post_urls(page, max_posts=max_posts)
+            urls = _discover_post_urls_from_page(page, max_posts=max_posts)
             if not urls:
                 browser.close()
                 raise RuntimeError(
@@ -111,35 +169,36 @@ class InstagramBrowserProvider:
 
         return IngestionResult(posts=posts, message=f"Fetched text for {len(posts)} posts from @{creator.handle}")
 
-    def _discover_post_urls(self, page, max_posts: int) -> list[str]:
-        urls: list[str] = []
-        seen: set[str] = set()
-        stable_scrolls = 0
-
-        while len(urls) < max_posts and stable_scrolls < 5:
-            before = len(urls)
-            candidates = page.locator("a").evaluate_all("(links) => links.map((a) => a.href)")
-            candidates.extend(ABSOLUTE_POST_URL_RE.findall(page.content()))
-            candidates.extend(RELATIVE_POST_URL_RE.findall(page.content()))
-            for candidate in _normalize_post_url_candidates(candidates):
-                if candidate not in seen:
-                    seen.add(candidate)
-                    urls.append(candidate)
-                    if len(urls) >= max_posts:
-                        break
-
-            page.mouse.wheel(0, 2500)
-            page.wait_for_timeout(1500)
-            stable_scrolls = stable_scrolls + 1 if len(urls) == before else 0
-
-        return urls[:max_posts]
-
 
 def _abort_heavy_resources(route) -> None:
     if route.request.resource_type in BLOCKED_RESOURCE_TYPES:
         route.abort()
         return
     route.continue_()
+
+
+def _discover_post_urls_from_page(page, max_posts: int) -> list[str]:
+    urls: list[str] = []
+    seen: set[str] = set()
+    stable_scrolls = 0
+
+    while len(urls) < max_posts and stable_scrolls < 5:
+        before = len(urls)
+        candidates = page.locator("a").evaluate_all("(links) => links.map((a) => a.href)")
+        candidates.extend(ABSOLUTE_POST_URL_RE.findall(page.content()))
+        candidates.extend(RELATIVE_POST_URL_RE.findall(page.content()))
+        for candidate in _normalize_post_url_candidates(candidates):
+            if candidate not in seen:
+                seen.add(candidate)
+                urls.append(candidate)
+                if len(urls) >= max_posts:
+                    break
+
+        page.mouse.wheel(0, 2500)
+        page.wait_for_timeout(1500)
+        stable_scrolls = stable_scrolls + 1 if len(urls) == before else 0
+
+    return urls[:max_posts]
 
 
 def _normalize_post_url_candidates(candidates: list[str]) -> list[str]:

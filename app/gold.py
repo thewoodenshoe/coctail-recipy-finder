@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import re
+import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
+from app.ingestion.base import IngestedPost
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -14,6 +16,8 @@ from app.models import Creator, GoldRecipe, Post, RawPost, Recipe, RecipeExtract
 
 LEGACY_TRANSFORMER_NAME = "legacy_migration"
 LEGACY_TRANSFORMER_VERSION = "legacy_migration_v1"
+DETERMINISTIC_TRANSFORMER_NAME = "deterministic_recipe_extractor"
+DETERMINISTIC_TRANSFORMER_VERSION = "deterministic_recipe_v1"
 
 
 def normalize_title(title: str | None) -> str | None:
@@ -48,6 +52,154 @@ def rebuild_gold_search_index(session: Session) -> int:
     for gold_recipe, raw_post in rows:
         update_gold_recipe_search_index(session, gold_recipe, raw_post)
     return len(rows)
+
+
+def clear_all_data(session: Session) -> None:
+    session.execute(text("DELETE FROM gold_recipe_search_index"))
+    session.execute(text("DELETE FROM search_index"))
+    session.execute(text("DELETE FROM gold_recipes"))
+    session.execute(text("DELETE FROM recipe_extractions"))
+    session.execute(text("DELETE FROM raw_posts"))
+    session.execute(text("DELETE FROM recipes"))
+    session.execute(text("DELETE FROM posts"))
+    session.execute(
+        text(
+            """
+            UPDATE creators
+            SET last_sync_at = NULL,
+                backfill_completed_at = NULL,
+                sync_status = 'never_synced',
+                sync_error = NULL
+            """
+        )
+    )
+
+
+def upsert_raw_post_from_ingested(
+    session: Session,
+    creator: Creator,
+    ingested: IngestedPost,
+    provider_name: str,
+) -> tuple[RawPost, bool]:
+    raw_text = (ingested.raw_text or ingested.caption_text).strip()
+    caption_text = ingested.caption_text.strip()
+    digest = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+    raw_post = session.scalar(select(RawPost).where(RawPost.source_url == ingested.source_url))
+    created = raw_post is None
+    now = datetime.now(timezone.utc)
+    raw_payload = {
+        "raw_text": raw_text,
+        "fetch_seconds": ingested.fetch_seconds,
+    }
+    if raw_post is None:
+        raw_post = RawPost(
+            platform="instagram",
+            creator_id=creator.id,
+            creator_handle_snapshot=creator.handle,
+            source_url=ingested.source_url,
+            external_post_id=ingested.external_post_id,
+            captured_at=now,
+            content_hash=digest,
+            raw_json=json.dumps(raw_payload, ensure_ascii=True),
+            raw_caption_text=caption_text,
+            raw_hashtags_json=json.dumps(_hashtags(caption_text), ensure_ascii=True),
+            posted_at=ingested.posted_at,
+            capture_completeness="text_only",
+            ingestion_provider=provider_name,
+            ingestion_status="raw_captured",
+        )
+        session.add(raw_post)
+        session.flush()
+    else:
+        raw_post.creator_id = creator.id
+        raw_post.creator_handle_snapshot = creator.handle
+        raw_post.external_post_id = ingested.external_post_id or raw_post.external_post_id
+        raw_post.captured_at = now
+        raw_post.content_hash = digest
+        raw_post.raw_json = json.dumps(raw_payload, ensure_ascii=True)
+        raw_post.raw_caption_text = caption_text
+        raw_post.raw_hashtags_json = json.dumps(_hashtags(caption_text), ensure_ascii=True)
+        raw_post.posted_at = ingested.posted_at or raw_post.posted_at
+        raw_post.capture_completeness = "text_only"
+        raw_post.ingestion_provider = provider_name
+        raw_post.ingestion_status = "raw_captured"
+        raw_post.ingestion_error = None
+    return raw_post, created
+
+
+def transform_raw_posts(session: Session, creator_handle: str | None = None) -> dict[str, int]:
+    query = select(RawPost, Creator).join(Creator, RawPost.creator_id == Creator.id)
+    if creator_handle:
+        query = query.where(Creator.handle == creator_handle)
+    rows = session.execute(query.order_by(RawPost.id)).all()
+    counts = {"processed": 0, "active": 0, "not_recipe": 0, "low_confidence": 0, "failed": 0}
+    for raw_post, creator in rows:
+        counts["processed"] += 1
+        try:
+            extraction = create_extraction_from_raw(session, raw_post)
+            gold_recipe, _created = upsert_gold_recipe_from_extraction(session, raw_post, extraction, creator)
+            update_gold_recipe_search_index(session, gold_recipe, raw_post)
+            if gold_recipe.status in counts:
+                counts[gold_recipe.status] += 1
+        except Exception as exc:
+            counts["failed"] += 1
+            extraction = RecipeExtraction(
+                raw_post_id=raw_post.id,
+                transformer_name=DETERMINISTIC_TRANSFORMER_NAME,
+                transformer_version=DETERMINISTIC_TRANSFORMER_VERSION,
+                status="failed",
+                extracted_json="{}",
+                confidence_reasons_json="[]",
+                error=str(exc),
+            )
+            session.add(extraction)
+    return counts
+
+
+def create_extraction_from_raw(session: Session, raw_post: RawPost) -> RecipeExtraction:
+    parsed = extract_recipe(raw_post.raw_caption_text)
+    ingredients = _structured_ingredients(parsed.ingredients)
+    status = "success"
+    if not ingredients:
+        status = "not_recipe"
+    elif parsed.confidence_score < 0.5:
+        status = "low_confidence"
+    extracted = {
+        "drink_title": parsed.drink_name,
+        "intro_text": parsed.extra_instagram_text,
+        "base_spirits": parsed.base_spirits,
+        "ingredients": ingredients,
+        "method": parsed.method,
+        "garnish": parsed.garnish,
+        "glassware": None,
+        "tags": parsed.tags,
+    }
+    extraction = session.scalar(
+        select(RecipeExtraction).where(
+            RecipeExtraction.raw_post_id == raw_post.id,
+            RecipeExtraction.transformer_version == DETERMINISTIC_TRANSFORMER_VERSION,
+        )
+    )
+    if extraction is None:
+        extraction = RecipeExtraction(
+            raw_post_id=raw_post.id,
+            transformer_name=DETERMINISTIC_TRANSFORMER_NAME,
+            transformer_version=DETERMINISTIC_TRANSFORMER_VERSION,
+            status=status,
+            extracted_json=json.dumps(extracted, ensure_ascii=True),
+            confidence_score=parsed.confidence_score,
+            quality_score=_quality_score_from_extracted(extracted, parsed.confidence_score),
+            confidence_reasons_json=json.dumps([], ensure_ascii=True),
+        )
+        session.add(extraction)
+        session.flush()
+    else:
+        extraction.status = status
+        extraction.extracted_json = json.dumps(extracted, ensure_ascii=True)
+        extraction.confidence_score = parsed.confidence_score
+        extraction.quality_score = _quality_score_from_extracted(extracted, parsed.confidence_score)
+        extraction.error = None
+    return extraction
 
 
 def upsert_raw_post_from_legacy(session: Session, post: Post) -> tuple[RawPost, bool]:
@@ -288,6 +440,17 @@ def _quality_score(recipe: Recipe | None) -> float:
     score += 0.15 if _json_list(recipe.base_spirits_json) else 0
     score += 0.05 if recipe.garnish else 0
     score += min(recipe.confidence_score or 0, 1.0) * 0.1
+    return round(min(score, 1.0), 3)
+
+
+def _quality_score_from_extracted(extracted: dict[str, Any], confidence_score: float | None) -> float:
+    score = 0.0
+    score += 0.25 if extracted.get("drink_title") else 0
+    score += 0.25 if extracted.get("ingredients") else 0
+    score += 0.2 if extracted.get("method") else 0
+    score += 0.15 if extracted.get("base_spirits") else 0
+    score += 0.05 if extracted.get("garnish") else 0
+    score += min(confidence_score or 0, 1.0) * 0.1
     return round(min(score, 1.0), 3)
 
 

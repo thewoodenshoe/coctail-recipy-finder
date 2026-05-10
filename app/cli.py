@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from time import perf_counter
 
 from app.config import get_settings
 from app.db import init_database, session_scope
-from app.gold import migrate_legacy_to_gold, rebuild_gold_search_index
+from app.gold import (
+    clear_all_data,
+    migrate_legacy_to_gold,
+    rebuild_gold_search_index,
+    transform_raw_posts,
+    upsert_raw_post_from_ingested,
+)
+from app.creators import normalize_handle
+from app.ingestion.instagram_browser import discover_creator_post_urls, fetch_instagram_post_text
+from app.models import Creator
 from app.services import import_post, provider_for_name, reparse_posts, sync_creators_from_config
 
 
@@ -25,6 +36,15 @@ def main() -> None:
     subparsers.add_parser("reparse-posts", help="Rebuild extracted recipes and search index from stored raw text")
     subparsers.add_parser("migrate-to-gold", help="Copy legacy posts/recipes into raw/extraction/gold tables")
     subparsers.add_parser("rebuild-gold-search", help="Rebuild the gold recipe FTS index")
+    subparsers.add_parser("clear-data", help="Delete all captured post, extraction, recipe, and search data")
+
+    transform_parser = subparsers.add_parser("transform-raw", help="Transform raw_posts into recipe_extractions and gold_recipes")
+    transform_parser.add_argument("--creator", help="Transform only one creator handle")
+
+    download_parser = subparsers.add_parser("download-raw", help="Download Instagram raw text into raw_posts")
+    download_parser.add_argument("--creator", required=True)
+    download_parser.add_argument("--limit", type=int, default=10)
+    download_parser.add_argument("--parallel", type=int, default=3)
 
     import_parser = subparsers.add_parser("import-caption", help="Import one pasted caption")
     import_parser.add_argument("--creator", required=True)
@@ -86,6 +106,76 @@ def main() -> None:
         with session_scope() as session:
             count = rebuild_gold_search_index(session)
             print(f"Rebuilt gold search index for {count} recipes")
+        return
+
+    if args.command == "clear-data":
+        init_database()
+        with session_scope() as session:
+            clear_all_data(session)
+            print("Deleted post, raw, extraction, gold, and search data")
+        return
+
+    if args.command == "transform-raw":
+        init_database()
+        with session_scope() as session:
+            counts = transform_raw_posts(session, normalize_handle(args.creator) if args.creator else None)
+            print(
+                "Transformed raw posts: "
+                f"{counts['processed']} processed, "
+                f"{counts['active']} active, "
+                f"{counts['not_recipe']} not_recipe, "
+                f"{counts['low_confidence']} low_confidence, "
+                f"{counts['failed']} failed"
+            )
+        return
+
+    if args.command == "download-raw":
+        init_database()
+        handle = normalize_handle(args.creator)
+        with session_scope() as session:
+            creator = session.query(Creator).filter(Creator.handle == handle).one_or_none()
+            if creator is None:
+                raise SystemExit(f"Creator not found in database: {handle}. Run sync-creators or add config first.")
+            profile_url = creator.profile_url
+
+        started = perf_counter()
+        urls = discover_creator_post_urls(settings.instagram_session_state_path, profile_url, args.limit)
+        print(f"Discovered {len(urls)} URLs for @{handle}")
+        downloaded = 0
+        fetch_seconds_total = 0.0
+        with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as executor:
+            futures = {
+                executor.submit(fetch_instagram_post_text, settings.instagram_session_state_path, url): url
+                for url in urls
+            }
+            for future in as_completed(futures):
+                url = futures[future]
+                try:
+                    ingested = future.result()
+                    with session_scope() as session:
+                        creator = session.query(Creator).filter(Creator.handle == handle).one()
+                        upsert_raw_post_from_ingested(
+                            session,
+                            creator,
+                            ingested,
+                            provider_name="instagram_browser",
+                        )
+                    downloaded += 1
+                    fetch_seconds_total += ingested.fetch_seconds or 0
+                    print(
+                        f"Downloaded {downloaded}/{len(urls)} {url} "
+                        f"({ingested.fetch_seconds or 0:.2f}s, committed)"
+                    )
+                except Exception as exc:
+                    print(f"Failed {url}: {exc}")
+        elapsed = perf_counter() - started
+        avg = elapsed / downloaded if downloaded else 0
+        avg_fetch = fetch_seconds_total / downloaded if downloaded else 0
+        print(
+            f"Download complete: {downloaded} posts, "
+            f"total_seconds={elapsed:.2f}, avg_seconds_per_post={avg:.2f}, "
+            f"avg_fetch_seconds_per_post={avg_fetch:.2f}"
+        )
         return
 
     if args.command == "import-caption":
