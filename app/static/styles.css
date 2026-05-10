@@ -126,6 +126,10 @@ button:hover,
 
 .result-card {
   padding: 16px;
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: 16px;
+  align-items: start;
 }
 
 .result-card h2 {
@@ -160,6 +164,31 @@ button:hover,
 .compact-list {
   margin: 0;
   padding-left: 20px;
+}
+
+.result-image-link {
+  display: block;
+}
+
+.result-image {
+  display: block;
+  width: 116px;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #f1eee7;
+}
+
+.detail-image {
+  display: block;
+  width: min(360px, 100%);
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  margin: 12px 0 16px;
+  background: #f1eee7;
 }
 
 .panel {
@@ -232,6 +261,15 @@ td {
 
   .search-form {
     grid-template-columns: 1fr;
+  }
+
+  .result-card {
+    grid-template-columns: 88px 1fr;
+    gap: 12px;
+  }
+
+  .result-image {
+    width: 88px;
   }
 
   .details {

@@ -293,8 +293,10 @@ def search_gold_recipes(
     rows = session.execute(
         text(
             f"""
-            SELECT gold_recipes.*, {rank}
+            SELECT gold_recipes.*, raw_posts.local_image_path, {rank}
             FROM gold_recipes
+            JOIN raw_posts
+                ON raw_posts.id = gold_recipes.raw_post_id
             JOIN gold_recipe_search_index
                 ON gold_recipe_search_index.gold_recipe_id = gold_recipes.id
             WHERE {where}

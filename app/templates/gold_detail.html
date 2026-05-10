@@ -4,6 +4,9 @@
   <article class="panel">
     <div class="result-meta">@{{ recipe.creator_handle }}</div>
     <h1>{{ recipe.drink_title or "Untitled cocktail post" }}</h1>
+    {% if image_url %}
+      <img class="detail-image" src="{{ image_url }}" alt="{{ recipe.drink_title or 'Cocktail post image' }}">
+    {% endif %}
     <p><a href="{{ recipe.source_url }}" target="_blank" rel="noopener noreferrer">Open original Instagram post</a></p>
 
     <dl class="details">

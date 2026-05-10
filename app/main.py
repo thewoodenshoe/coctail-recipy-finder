@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import RedirectResponse, Response
@@ -9,16 +10,17 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import BASE_DIR
+from app.config import BASE_DIR, get_settings
 from app.db import get_db, init_database
 from app.gold import search_gold_recipes
-from app.models import Creator, GoldRecipe
+from app.models import Creator, GoldRecipe, RawPost
 from app.services import import_caption_to_gold
 
 
 app = FastAPI(title="Cocktail Recipe Finder")
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
+app.mount("/media", StaticFiles(directory=str(get_settings().media_dir)), name="media")
 
 
 @app.on_event("startup")
@@ -97,6 +99,7 @@ def gold_detail(gold_id: int, request: Request, db: Session = Depends(get_db)):
     recipe = db.scalar(select(GoldRecipe).where(GoldRecipe.id == gold_id))
     if recipe is None:
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+    raw_post = db.scalar(select(RawPost).where(RawPost.id == recipe.raw_post_id))
     ingredients = []
     base_spirits = []
     try:
@@ -112,6 +115,7 @@ def gold_detail(gold_id: int, request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "recipe": recipe,
+            "image_url": _media_url(raw_post.local_image_path if raw_post else None),
             "ingredients": ingredients,
             "base_spirits": base_spirits,
         },
@@ -138,6 +142,18 @@ def _decorate_result(row: dict) -> dict:
     row["base_spirits"] = [spirit for spirit in base_spirits if spirit]
     row["drink_name"] = row.get("drink_name") or row.get("drink_title")
     row["detail_path"] = f"/gold/{row['id']}"
+    row["image_url"] = _media_url(row.get("local_image_path"))
     row["short_caption"] = (row.get("caption_text") or "")[:220]
     row["show_garnish"] = bool(row.get("garnish") and row.get("garnish") != row.get("method"))
     return row
+
+
+def _media_url(local_image_path: str | None) -> str | None:
+    if not local_image_path:
+        return None
+    media_dir = get_settings().media_dir.expanduser().resolve()
+    try:
+        relative_path = Path(local_image_path).expanduser().resolve().relative_to(media_dir)
+    except ValueError:
+        return None
+    return "/media/" + relative_path.as_posix()
