@@ -122,4 +122,5 @@ def _decorate_result(row: dict) -> dict:
         ingredients = [row.get("ingredients_json")]
     row["ingredients"] = ingredients
     row["short_caption"] = (row.get("caption_text") or "")[:220]
+    row["show_garnish"] = bool(row.get("garnish") and row.get("garnish") != row.get("method"))
     return row

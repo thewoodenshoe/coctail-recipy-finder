@@ -134,6 +134,7 @@ def upsert_post(session: Session, creator: Creator, ingested: IngestedPost) -> P
     post.recipe.ingredients_json = recipe_data.ingredients_json()
     post.recipe.method = recipe_data.method
     post.recipe.garnish = recipe_data.garnish
+    post.recipe.extra_instagram_text = recipe_data.extra_instagram_text
     post.recipe.confidence_score = recipe_data.confidence_score
     session.flush()
     session.refresh(post)
@@ -153,6 +154,7 @@ def reparse_posts(session: Session) -> int:
         post.recipe.ingredients_json = recipe_data.ingredients_json()
         post.recipe.method = recipe_data.method
         post.recipe.garnish = recipe_data.garnish
+        post.recipe.extra_instagram_text = recipe_data.extra_instagram_text
         post.recipe.confidence_score = recipe_data.confidence_score
         update_post_search_index(session, post)
     return len(posts)

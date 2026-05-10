@@ -41,6 +41,7 @@ class ExtractedRecipe:
     ingredients: list[str]
     method: str | None
     garnish: str | None
+    extra_instagram_text: str | None
     confidence_score: float
     tags: list[str]
 
@@ -53,11 +54,14 @@ def extract_recipe(caption_text: str) -> ExtractedRecipe:
     lines = [line.strip(" -•\t") for line in normalized_text.splitlines() if line.strip()]
     lower_text = normalized_text.lower()
 
-    drink_name = _extract_drink_name(lines)
+    recipe_block = _find_recipe_block(lines)
+    scoped_lines = recipe_block.recipe_lines if recipe_block else lines
+
+    drink_name = recipe_block.drink_name if recipe_block else _extract_drink_name(lines)
     base_spirit = _extract_base_spirit(lower_text)
-    ingredients = _extract_ingredients(lines)
-    method = _extract_method(lines, caption_text)
-    garnish = _extract_garnish(lines)
+    ingredients = _extract_ingredients(scoped_lines, recipe_block)
+    method = _extract_method(scoped_lines, normalized_text, recipe_block)
+    garnish = _extract_garnish(scoped_lines)
     tags = [tag.lower() for tag in HASHTAG_RE.findall(normalized_text)]
 
     score = 0.2
@@ -78,9 +82,19 @@ def extract_recipe(caption_text: str) -> ExtractedRecipe:
         ingredients=ingredients,
         method=method,
         garnish=garnish,
+        extra_instagram_text=recipe_block.extra_instagram_text if recipe_block else None,
         confidence_score=min(score, 0.95),
         tags=tags,
     )
+
+
+@dataclass(frozen=True)
+class RecipeBlock:
+    drink_name: str
+    recipe_lines: list[str]
+    ingredient_lines: list[str]
+    method_lines: list[str]
+    extra_instagram_text: str | None
 
 
 def _extract_drink_name(lines: list[str]) -> str | None:
@@ -104,6 +118,54 @@ def _extract_drink_name(lines: list[str]) -> str | None:
         if candidate:
             return candidate
     return None
+
+
+def _find_recipe_block(lines: list[str]) -> RecipeBlock | None:
+    for title_index, line in enumerate(lines):
+        title = _clean_title_candidate(line)
+        if not title or not _looks_like_recipe_title(line):
+            continue
+
+        following = lines[title_index + 1 :]
+        if not any(_looks_like_ingredient_line(candidate) for candidate in following[:14]):
+            continue
+
+        ingredient_lines: list[str] = []
+        method_lines: list[str] = []
+        in_method = False
+        for candidate in following:
+            if _is_instagram_tail_line(candidate):
+                break
+            if candidate.startswith("#"):
+                break
+            if not in_method and _looks_like_method_start(candidate) and ingredient_lines:
+                in_method = True
+            if in_method:
+                method_lines.append(candidate)
+                continue
+            if _looks_like_ingredient_line(candidate) or ingredient_lines:
+                ingredient_lines.append(candidate)
+
+        ingredient_lines = [line for line in ingredient_lines if not _looks_like_method_start(line)]
+        if not ingredient_lines:
+            continue
+
+        return RecipeBlock(
+            drink_name=_title_case(title),
+            recipe_lines=[title, *ingredient_lines, *method_lines],
+            ingredient_lines=ingredient_lines,
+            method_lines=method_lines,
+            extra_instagram_text="\n".join(lines[:title_index]).strip() or None,
+        )
+    return None
+
+
+def _looks_like_recipe_title(line: str) -> bool:
+    letters = [char for char in line if char.isalpha()]
+    if not letters:
+        return False
+    uppercase_ratio = sum(1 for char in letters if char.isupper()) / len(letters)
+    return uppercase_ratio >= 0.7 and len(line) <= 64
 
 
 def _clean_title_candidate(line: str) -> str | None:
@@ -132,15 +194,23 @@ def _extract_base_spirit(lower_text: str) -> str | None:
     return None
 
 
-def _extract_ingredients(lines: list[str]) -> list[str]:
+def _extract_ingredients(lines: list[str], recipe_block: RecipeBlock | None = None) -> list[str]:
+    if recipe_block:
+        return recipe_block.ingredient_lines
     ingredients: list[str] = []
     for line in lines:
-        if MEASUREMENT_RE.search(line) or COUNT_INGREDIENT_RE.search(line):
+        if _looks_like_ingredient_line(line):
             ingredients.append(line)
     return ingredients
 
 
-def _extract_method(lines: list[str], caption_text: str) -> str | None:
+def _extract_method(
+    lines: list[str],
+    caption_text: str,
+    recipe_block: RecipeBlock | None = None,
+) -> str | None:
+    if recipe_block and recipe_block.method_lines:
+        return " ".join(recipe_block.method_lines)
     method_lines = [line for line in lines if METHOD_RE.search(line)]
     if method_lines:
         return " ".join(method_lines[:3])
@@ -153,3 +223,39 @@ def _extract_garnish(lines: list[str]) -> str | None:
         if "garnish" in line.lower():
             return line
     return None
+
+
+def _looks_like_ingredient_line(line: str) -> bool:
+    lower = line.lower()
+    if MEASUREMENT_RE.search(line) or COUNT_INGREDIENT_RE.search(line):
+        return True
+    if re.search(r"(?<![A-Za-z0-9])\d+(-\d+)?\s*(g|grams|cup|cups)\b", lower):
+        return True
+    if re.search(r"(?<![A-Za-z0-9])\d+(-\d+)?\s+(slices?|pods?|cloves?|disks?|strawberries|cucumber slices?)\b", lower):
+        return True
+    return lower in {"ginger beer", "angostura® aromatic bitters, to top"}
+
+
+def _looks_like_method_start(line: str) -> bool:
+    return bool(
+        re.search(
+            r"^(combine|in a |toast|add ice|serve|store|top with|muddle|dirty dump|strain)",
+            line,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _is_instagram_tail_line(line: str) -> bool:
+    lower = line.lower()
+    if lower in {"messages", "follow", "meta", "about", "blog", "jobs", "help", "api", "privacy", "terms"}:
+        return True
+    if line == "•":
+        return True
+    return bool(re.fullmatch(r"[\d,.]+[km]?", lower))
+
+
+def _title_case(title: str) -> str:
+    if not _looks_like_recipe_title(title):
+        return title
+    return " ".join(word[:1].upper() + word[1:].lower() for word in title.split())

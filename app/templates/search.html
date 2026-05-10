@@ -27,11 +27,23 @@
             <h2><a href="/posts/{{ result.id }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h2>
             <div class="tags">
               {% if result.base_spirit %}<span>{{ result.base_spirit }}</span>{% endif %}
-              {% for ingredient in result.ingredients[:4] %}
-                <span>{{ ingredient }}</span>
-              {% endfor %}
             </div>
-            <p>{{ result.short_caption }}</p>
+            {% if result.ingredients %}
+              <h3>Ingredients</h3>
+              <ul class="compact-list">
+                {% for ingredient in result.ingredients[:8] %}
+                  <li>{{ ingredient }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            {% if result.method %}
+              <h3>Method</h3>
+              <p>{{ result.method }}</p>
+            {% endif %}
+            {% if result.show_garnish %}
+              <h3>Garnish</h3>
+              <p>{{ result.garnish }}</p>
+            {% endif %}
             <a href="{{ result.source_url }}" target="_blank" rel="noopener noreferrer">Original Instagram post</a>
           </article>
         {% endfor %}

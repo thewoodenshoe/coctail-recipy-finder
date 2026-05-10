@@ -132,6 +132,12 @@ button:hover,
   margin: 4px 0 8px;
 }
 
+.result-card h3 {
+  margin: 12px 0 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .result-meta,
 .empty-state {
   color: var(--muted);
@@ -149,6 +155,11 @@ button:hover,
   padding: 4px 8px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.compact-list {
+  margin: 0;
+  padding-left: 20px;
 }
 
 .panel {

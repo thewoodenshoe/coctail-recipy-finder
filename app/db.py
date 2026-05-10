@@ -54,6 +54,13 @@ def migrate_sqlite_schema(db_engine: Engine) -> None:
             if column not in columns:
                 connection.execute(text(statement))
 
+        recipe_columns = {
+            row["name"]
+            for row in connection.execute(text("PRAGMA table_info(recipes)")).mappings().all()
+        }
+        if "extra_instagram_text" not in recipe_columns:
+            connection.execute(text("ALTER TABLE recipes ADD COLUMN extra_instagram_text TEXT"))
+
 
 def create_search_index(db_engine: Engine) -> None:
     with db_engine.begin() as connection:

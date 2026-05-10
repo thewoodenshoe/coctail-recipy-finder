@@ -17,3 +17,15 @@ def test_search_index_returns_imported_caption(db_session):
     assert results
     assert results[0]["id"] == post.id
     assert results[0]["creator_handle"] == "notjustabartender"
+
+
+def test_search_excludes_non_recipe_posts_without_ingredients(db_session):
+    import_post(
+        db_session,
+        "notjustabartender",
+        "https://www.instagram.com/p/no-recipe/",
+        "This competition was next level. #ad | @flordecanarum",
+    )
+    db_session.commit()
+
+    assert search_posts(db_session, "competition") == []

@@ -35,7 +35,7 @@ Combine all ingredients into a shaker tin with ice, shake hard for at least 25 s
 """
     recipe = extract_recipe(caption)
 
-    assert recipe.drink_name == "PINK PONY CLUB"
+    assert recipe.drink_name == "Pink Pony Club"
     assert recipe.base_spirit == "gin"
     assert ".66oz | 20ml strawberry syrup" in recipe.ingredients
     assert "1 egg white" in recipe.ingredients
@@ -58,6 +58,36 @@ PINK PONY CLUB
 """
     recipe = extract_recipe(caption)
 
-    assert recipe.drink_name == "PINK PONY CLUB"
+    assert recipe.drink_name == "Pink Pony Club"
     assert recipe.base_spirit == "gin"
     assert "1 egg white" in recipe.ingredients
+    assert recipe.extra_instagram_text is not None
+    assert "certified platinum" in recipe.extra_instagram_text
+
+
+def test_extract_notjustabartender_component_recipe_block():
+    caption = """notjustabartender
+mijentatequila
+Let me know if you slap yo’ mama. #ad | @mijentatequila
+This has been kicking around my dome for the past 3 or 4 months.
+MAZAPÀN HORCHATA
+1 cup of long grain rice
+2 Mexican cinnamon sticks
+2-3 star anise pods
+2-3 cloves
+.25 cup of sliced almonds
+4 cups water
+1 cup granulated sugar
+360ml evaporated milk
+360ml condensed milk
+3 Mazapan disks
+500ml Mijenta Reposado
+Toast rice, spices, and almonds together in a pan on medium to high heat. Store in fridge for up to 2 weeks.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Mazapàn Horchata"
+    assert "1 cup of long grain rice" in recipe.ingredients
+    assert "500ml Mijenta Reposado" in recipe.ingredients
+    assert recipe.method is not None
+    assert recipe.method.startswith("Toast rice")

@@ -68,6 +68,8 @@ def search_posts(session: Session, query: str = "", creator_handle: str | None =
                 recipes.drink_name,
                 recipes.base_spirit,
                 recipes.ingredients_json,
+                recipes.method,
+                recipes.garnish,
                 highlight(search_index, 3, '<mark>', '</mark>') AS excerpt,
                 bm25(search_index) AS rank
             FROM search_index
@@ -75,6 +77,8 @@ def search_posts(session: Session, query: str = "", creator_handle: str | None =
             JOIN creators ON creators.id = posts.creator_id
             LEFT JOIN recipes ON recipes.post_id = posts.id
             WHERE search_index MATCH :fts_query
+                AND recipes.ingredients_json IS NOT NULL
+                AND recipes.ingredients_json != '[]'
         """
         order = "ORDER BY rank, posts.discovered_at DESC LIMIT :limit"
     else:
@@ -87,12 +91,15 @@ def search_posts(session: Session, query: str = "", creator_handle: str | None =
                 recipes.drink_name,
                 recipes.base_spirit,
                 recipes.ingredients_json,
+                recipes.method,
+                recipes.garnish,
                 substr(posts.caption_text, 1, 220) AS excerpt,
                 0 AS rank
             FROM posts
             JOIN creators ON creators.id = posts.creator_id
             LEFT JOIN recipes ON recipes.post_id = posts.id
-            WHERE 1 = 1
+            WHERE recipes.ingredients_json IS NOT NULL
+                AND recipes.ingredients_json != '[]'
         """
         order = "ORDER BY posts.discovered_at DESC LIMIT :limit"
 

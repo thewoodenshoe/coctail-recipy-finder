@@ -68,6 +68,7 @@ class Recipe(Base):
     ingredients_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     method: Mapped[str | None] = mapped_column(Text, nullable=True)
     garnish: Mapped[str | None] = mapped_column(Text, nullable=True)
+    extra_instagram_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     confidence_score: Mapped[float | None] = mapped_column(nullable=True)
 
     post: Mapped[Post] = relationship(back_populates="recipe")
