@@ -27,6 +27,19 @@ Log in to like or comment.
     assert "Log in to like" not in caption
 
 
+def test_browser_text_helpers_reject_instagram_error_page():
+    raw = """
+2
+Sorry, this page isn't available.
+The link you followed may be broken, or the page may have been removed. Go back to Instagram.
+Consumer Health Privacy
+Popular
+Instagram Lite
+"""
+
+    assert _extract_best_caption(raw) == ""
+
+
 def test_post_id_from_instagram_url():
     assert _post_id_from_url("https://www.instagram.com/p/DXnYlmJjk48/") == "DXnYlmJjk48"
     assert _post_id_from_url("https://www.instagram.com/reel/ABC123/") == "ABC123"

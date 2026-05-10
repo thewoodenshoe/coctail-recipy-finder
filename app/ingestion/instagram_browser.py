@@ -234,6 +234,8 @@ def _clean_page_text(text: str) -> str:
 def _extract_best_caption(raw_text: str) -> str:
     if not raw_text:
         return ""
+    if _is_instagram_error_page(raw_text):
+        return ""
     lines = raw_text.splitlines()
     content_lines = []
     skip_exact = {
@@ -259,6 +261,18 @@ def _extract_best_caption(raw_text: str) -> str:
             continue
         content_lines.append(stripped)
     return "\n".join(content_lines).strip()
+
+
+def _is_instagram_error_page(raw_text: str) -> bool:
+    lower = raw_text.lower()
+    return any(
+        marker in lower
+        for marker in (
+            "sorry, this page isn't available",
+            "the link you followed may be broken",
+            "page may have been removed",
+        )
+    )
 
 
 def _post_id_from_url(url: str) -> str | None:
