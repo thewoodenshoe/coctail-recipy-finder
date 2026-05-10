@@ -6,18 +6,18 @@ from dataclasses import dataclass
 
 
 BASE_SPIRITS = [
-    "campari",
-    "aperol",
+    "gin",
     "bourbon",
     "whiskey",
-    "brandy",
-    "cognac",
+    "rye",
     "tequila",
     "mezcal",
-    "vodka",
-    "gin",
     "rum",
-    "rye",
+    "vodka",
+    "brandy",
+    "cognac",
+    "campari",
+    "aperol",
 ]
 
 MEASUREMENT_RE = re.compile(
@@ -49,15 +49,16 @@ class ExtractedRecipe:
 
 
 def extract_recipe(caption_text: str) -> ExtractedRecipe:
-    lines = [line.strip(" -•\t") for line in caption_text.splitlines() if line.strip()]
-    lower_text = caption_text.lower()
+    normalized_text = re.sub(r"�+", "\n", caption_text)
+    lines = [line.strip(" -•\t") for line in normalized_text.splitlines() if line.strip()]
+    lower_text = normalized_text.lower()
 
     drink_name = _extract_drink_name(lines)
     base_spirit = _extract_base_spirit(lower_text)
     ingredients = _extract_ingredients(lines)
     method = _extract_method(lines, caption_text)
     garnish = _extract_garnish(lines)
-    tags = [tag.lower() for tag in HASHTAG_RE.findall(caption_text)]
+    tags = [tag.lower() for tag in HASHTAG_RE.findall(normalized_text)]
 
     score = 0.2
     if drink_name:
@@ -83,19 +84,45 @@ def extract_recipe(caption_text: str) -> ExtractedRecipe:
 
 
 def _extract_drink_name(lines: list[str]) -> str | None:
+    first_ingredient_index = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if MEASUREMENT_RE.search(line) or COUNT_INGREDIENT_RE.search(line)
+        ),
+        None,
+    )
+    if first_ingredient_index is not None:
+        start = max(0, first_ingredient_index - 8)
+        for line in reversed(lines[start:first_ingredient_index]):
+            candidate = _clean_title_candidate(line)
+            if candidate:
+                return candidate
+
     for line in lines[:4]:
-        cleaned = line.strip().strip(":")
-        if not cleaned:
-            continue
-        if cleaned.startswith("#") or cleaned.startswith("@"):
-            continue
-        if MEASUREMENT_RE.search(cleaned):
-            continue
-        if len(cleaned) > 80:
-            continue
-        cleaned = re.sub(r"^[\"'“”]+|[\"'“”]+$", "", cleaned)
-        return cleaned
+        candidate = _clean_title_candidate(line)
+        if candidate:
+            return candidate
     return None
+
+
+def _clean_title_candidate(line: str) -> str | None:
+    cleaned = line.strip().strip(":")
+    if not cleaned:
+        return None
+    if cleaned.startswith("#") or cleaned.startswith("@"):
+        return None
+    if MEASUREMENT_RE.search(cleaned) or COUNT_INGREDIENT_RE.search(cleaned):
+        return None
+    if len(cleaned) > 80:
+        return None
+    lower = cleaned.lower()
+    if lower in {"follow", "following", "log in", "sign up"}:
+        return None
+    if lower.endswith(" people") or lower == "notjustabartender":
+        return None
+    cleaned = re.sub(r"^[\"'“”]+|[\"'“”]+$", "", cleaned)
+    return cleaned
 
 
 def _extract_base_spirit(lower_text: str) -> str | None:

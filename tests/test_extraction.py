@@ -36,9 +36,28 @@ Combine all ingredients into a shaker tin with ice, shake hard for at least 25 s
     recipe = extract_recipe(caption)
 
     assert recipe.drink_name == "PINK PONY CLUB"
-    assert recipe.base_spirit == "campari"
+    assert recipe.base_spirit == "gin"
     assert ".66oz | 20ml strawberry syrup" in recipe.ingredients
     assert "1 egg white" in recipe.ingredients
     assert recipe.method is not None
     assert "shake hard" in recipe.method
     assert recipe.garnish is not None
+
+
+def test_extract_recipe_title_near_ingredient_block_from_instagram_text():
+    caption = """notjustabartender
+4 people
+A certified platinum banger.
+Still delicious though.
+PINK PONY CLUB
+.25oz | 7.5ml Campari
+.66oz | 20ml strawberry syrup
+.75oz | 22.5ml lemon juice
+1.5oz | 45ml gin
+1 egg white��Combine all ingredients into a shaker tin with ice, shake hard.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "PINK PONY CLUB"
+    assert recipe.base_spirit == "gin"
+    assert "1 egg white" in recipe.ingredients
