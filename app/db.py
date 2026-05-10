@@ -33,11 +33,11 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 
 def init_database(db_engine: Engine = engine) -> None:
     Base.metadata.create_all(bind=db_engine)
-    drop_legacy_sqlite_tables(db_engine)
+    drop_obsolete_sqlite_tables(db_engine)
     create_gold_search_index(db_engine)
 
 
-def drop_legacy_sqlite_tables(db_engine: Engine) -> None:
+def drop_obsolete_sqlite_tables(db_engine: Engine) -> None:
     if db_engine.dialect.name != "sqlite":
         return
     with db_engine.begin() as connection:

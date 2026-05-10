@@ -51,7 +51,7 @@ class RawPost(Base):
     raw_comment_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     capture_completeness: Mapped[str] = mapped_column(String(64), default="text_only", nullable=False)
-    ingestion_provider: Mapped[str] = mapped_column(String(128), default="legacy_migration", nullable=False)
+    ingestion_provider: Mapped[str] = mapped_column(String(128), default="unknown", nullable=False)
     ingestion_status: Mapped[str] = mapped_column(String(64), default="raw_captured", nullable=False)
     ingestion_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
