@@ -74,7 +74,10 @@ def extract_recipe(caption_text: str) -> ExtractedRecipe:
 
     drink_name = recipe_block.drink_name if recipe_block else _extract_drink_name(lines)
     ingredients = _extract_ingredients(scoped_lines, recipe_block)
-    base_spirits = _extract_base_spirits("\n".join([*ingredients, drink_name or "", lower_text]))
+    base_source_text = "\n".join([*ingredients, drink_name or ""])
+    base_spirits = _extract_base_spirits(base_source_text)
+    if not base_spirits:
+        base_spirits = _extract_base_spirits(lower_text)
     base_spirit = base_spirits[0] if base_spirits else None
     method = _extract_method(scoped_lines, normalized_text, recipe_block)
     garnish = _extract_garnish(scoped_lines)

@@ -120,3 +120,19 @@ Shake with ice.
     recipe = extract_recipe(caption)
 
     assert recipe.base_spirits == ["gin", "rum"]
+
+
+def test_base_spirit_prefers_ingredients_over_intro_context():
+    caption = """IRISH MAID
+This is a riff on a bourbon and cucumber drink.
+IRISH MAID
+2-3 cucumber slices
+.5oz | 15ml simple syrup
+.5oz | 15ml elderflower liqueur
+.75oz | 22.5ml lemon juice
+2oz | 60ml Irish whiskey
+In a tin, muddle cucumber pieces, then combine remaining ingredients.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.base_spirits == ["whiskey"]
