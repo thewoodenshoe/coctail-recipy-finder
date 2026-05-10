@@ -51,6 +51,14 @@ The production ingestion path may use an authorized Playwright browser session o
 
 Backfill discovers visible `/p/...` and `/reel/...` URLs from each configured profile and fetches text for each post. Incremental sync checks a smaller recent window and stops after enough known posts are seen.
 
+Operational finding from the first full Ubuntu backfill attempt:
+
+- Profile discovery can find post URLs while individual post pages still render empty or as Instagram error pages in headless Chromium.
+- Do not treat discovered URLs as captured content.
+- Do not store Instagram error pages such as `Sorry, this page isn't available` as raw posts.
+- If a full run returns mostly `No caption text extracted`, stop and inspect the authorized browser session before retrying a large backfill.
+- A reliable large backfill likely needs a refreshed authorized browser session, an operator-assisted browser mode, or another creator-authorized/API path.
+
 ## Later Ingestion Options
 
 Later options can include:
