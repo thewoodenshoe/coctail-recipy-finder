@@ -163,9 +163,13 @@ def sync_creators_from_config(
     config_path,
     provider: IngestionProvider | None = None,
     force_backfill: bool = False,
+    only_handle: str | None = None,
 ) -> list[SyncAction]:
     provider = provider or InstagramPublicProvider()
     configs = load_creator_config(config_path)
+    if only_handle:
+        normalized_only_handle = normalize_handle(only_handle)
+        configs = [config for config in configs if normalize_handle(config.handle) == normalized_only_handle]
     actions: list[SyncAction] = []
     now = datetime.now(timezone.utc)
 

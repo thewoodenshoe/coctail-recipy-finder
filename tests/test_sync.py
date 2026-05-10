@@ -109,6 +109,20 @@ creators:
     assert actions[0].action == "backfill"
 
 
+def test_sync_can_limit_to_one_creator(db_session, tmp_path: Path):
+    path = tmp_path / "creators.yml"
+    write_config(path)
+
+    actions = sync_creators_from_config(
+        db_session,
+        path,
+        provider=FailingProvider(),
+        only_handle="oldcreator",
+    )
+
+    assert [action.handle for action in actions] == ["oldcreator"]
+
+
 def test_upsert_post_preserves_raw_text_and_reparse_updates_search(db_session):
     creator = Creator(
         handle="notjustabartender",

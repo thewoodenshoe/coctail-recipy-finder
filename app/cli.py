@@ -16,6 +16,7 @@ def main() -> None:
     sync_parser = subparsers.add_parser("sync-creators", help="Sync creators from config/creators.yml")
     sync_parser.add_argument("--provider", default="public", choices=["public", "instagram-public", "browser", "instagram-browser"])
     sync_parser.add_argument("--force-backfill", action="store_true", help="Run backfill for active creators even if they were previously marked backfilled")
+    sync_parser.add_argument("--creator", help="Sync only one creator handle from config/creators.yml")
 
     auth_parser = subparsers.add_parser("instagram-auth", help="Create an authorized Instagram browser session outside the repo")
     auth_parser.add_argument("--headless", action="store_true")
@@ -44,6 +45,7 @@ def main() -> None:
                 settings.creator_config_path,
                 provider=provider,
                 force_backfill=args.force_backfill,
+                only_handle=args.creator,
             )
             for action in actions:
                 detail = f" - {action.message}" if action.message else ""
