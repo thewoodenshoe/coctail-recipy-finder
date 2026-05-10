@@ -332,7 +332,7 @@ def _structured_ingredients(ingredients: list[str]) -> list[dict[str, str | None
 
 
 def _ingredient_name(raw_text: str) -> str:
-    text_value = re.sub(r"^[\d./-]+\s*(oz|ml|g|grams|cup|cups|tsp|tbsp|dash|dashes|part|parts)?\s*(\|\s*[\d./-]+\s*(oz|ml))?\s*", "", raw_text, flags=re.IGNORECASE)
+    text_value = re.sub(r"^[\d./-]+\s*(ounces|ounce|cups|cup|grams|g|oz|ml|tbsp|tsp|dashes|dash|parts|part)?\s*(\|\s*[\d./-]+\s*(oz|ml))?\s*", "", raw_text, flags=re.IGNORECASE)
     return text_value.strip() or raw_text
 
 

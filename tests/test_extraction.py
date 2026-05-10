@@ -136,3 +136,77 @@ In a tin, muddle cucumber pieces, then combine remaining ingredients.
     recipe = extract_recipe(caption)
 
     assert recipe.base_spirits == ["whiskey"]
+
+
+def test_extract_join_jules_labeled_ingredients_title():
+    caption = """join_jules
+•
+Follow
+Brenton Wood · Great Big Bundle Of Love
+Frozen Peach White Wine Mule >>>>
+It’s officially time to breakout the blender and start sipping on frozen drinks.
+Ingredients:
+1 cup white wine
+1 cup frozen peaches
+Juice of 1 lemon
+1/2 cup ginger beer
+Blend until smooth & split between two glasses!
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Frozen Peach White Wine Mule"
+    assert "Juice of 1 lemon" in recipe.ingredients
+    assert "1/2 cup ginger beer" in recipe.ingredients
+    assert recipe.method == "Blend until smooth & split between two glasses!"
+
+
+def test_extract_join_jules_embedded_title_before_ingredients():
+    caption = """join_jules
+Mother’s Day is this Sunday… do you have your cocktail menu ready?
+I’ll be serving one of my mom’s all-time favorites: a French Blonde. But since I’m hosting a few moms this year, I’m batching it in a pitcher ahead of time
+Ingredients:
+2 cups fresh grapefruit juice
+2 cups lillet
+1 cup gin
+1/2 cup elderflower liqueur
+Mix in a pitcher and chill in the fridge until ready to serve
+Serve by shaking up 2 at a time using a cocktail shaker
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "French Blonde"
+    assert "2 cups lillet" in recipe.ingredients
+    assert "1 cup gin" in recipe.ingredients
+    assert recipe.base_spirits == ["gin"]
+    assert recipe.method is not None
+    assert recipe.method.startswith("Mix in a pitcher")
+
+
+def test_extract_kentuckyginger_mint_julep_unmeasured_block_ingredients():
+    caption = """kentuckyginger
+MINT JULEP
+Handful of mint leaves
+1/2 oz simple syrup
+2 oz bourbon
+lots of crushed ice
+Mint for garnish
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Mint Julep"
+    assert "Handful of mint leaves" in recipe.ingredients
+    assert "lots of crushed ice" in recipe.ingredients
+    assert recipe.garnish == "Mint for garnish"
+    assert recipe.base_spirits == ["bourbon"]
+
+
+def test_cta_post_without_ingredient_block_is_not_recipe():
+    caption = """kentuckyginger
+Friends don’t let friends drink shitty margs.
+Are you still looking for the perfect batched margarita recipe?
+Commment “MARGS” and I’ll send you the recipe straight to your inbox.
+#cincodemayo #margaritas #tequila #cocktails
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.ingredients == []

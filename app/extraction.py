@@ -43,6 +43,7 @@ COUNT_INGREDIENT_RE = re.compile(
 )
 METHOD_RE = re.compile(r"\b(shaken|shake|stirred|stir|built|build|blended|blend|muddled|muddle)\b", re.IGNORECASE)
 HASHTAG_RE = re.compile(r"#([A-Za-z0-9_]+)")
+RECIPE_LABEL_RE = re.compile(r"^(ingredients|to your .* add|to .* add)\s*:?\s*$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,10 @@ def _extract_drink_name(lines: list[str]) -> str | None:
 
 
 def _find_recipe_block(lines: list[str]) -> RecipeBlock | None:
+    labeled_block = _find_labeled_recipe_block(lines)
+    if labeled_block:
+        return labeled_block
+
     for title_index, line in enumerate(lines):
         title = _clean_title_candidate(line)
         if not title or not _looks_like_recipe_title(line):
@@ -153,7 +158,7 @@ def _find_recipe_block(lines: list[str]) -> RecipeBlock | None:
         ingredient_lines: list[str] = []
         method_lines: list[str] = []
         in_method = False
-        for candidate in following:
+        for candidate_index, candidate in enumerate(following):
             if _is_instagram_tail_line(candidate):
                 break
             if candidate.startswith("#"):
@@ -163,7 +168,15 @@ def _find_recipe_block(lines: list[str]) -> RecipeBlock | None:
             if in_method:
                 method_lines.append(candidate)
                 continue
-            if _looks_like_ingredient_line(candidate) or ingredient_lines:
+            upcoming = following[candidate_index + 1 : candidate_index + 4]
+            if (
+                _looks_like_ingredient_line(candidate)
+                or ingredient_lines
+                or (
+                    _looks_like_contextual_ingredient_line(candidate)
+                    and any(_looks_like_ingredient_line(line) for line in upcoming)
+                )
+            ):
                 ingredient_lines.append(candidate)
 
         ingredient_lines = [line for line in ingredient_lines if not _looks_like_method_start(line)]
@@ -178,6 +191,88 @@ def _find_recipe_block(lines: list[str]) -> RecipeBlock | None:
             extra_instagram_text="\n".join(lines[:title_index]).strip() or None,
         )
     return None
+
+
+def _find_labeled_recipe_block(lines: list[str]) -> RecipeBlock | None:
+    for label_index, line in enumerate(lines):
+        if not RECIPE_LABEL_RE.search(line):
+            continue
+
+        title = _title_before_label(lines, label_index)
+        if not title:
+            continue
+
+        ingredient_lines: list[str] = []
+        method_lines: list[str] = []
+        in_method = False
+        for candidate in lines[label_index + 1 :]:
+            if _is_instagram_tail_line(candidate) or candidate.startswith("#"):
+                break
+            if _looks_like_method_start(candidate) and ingredient_lines:
+                in_method = True
+            if in_method:
+                method_lines.append(candidate)
+                continue
+            if _looks_like_ingredient_line(candidate) or _looks_like_contextual_ingredient_line(candidate):
+                ingredient_lines.append(candidate)
+                continue
+            if ingredient_lines:
+                break
+
+        ingredient_lines = [line for line in ingredient_lines if not _looks_like_method_start(line)]
+        if len(ingredient_lines) < 2:
+            continue
+
+        return RecipeBlock(
+            drink_name=title,
+            recipe_lines=[title, *ingredient_lines, *method_lines],
+            ingredient_lines=ingredient_lines,
+            method_lines=method_lines,
+            extra_instagram_text="\n".join(lines[:label_index]).strip() or None,
+        )
+    return None
+
+
+def _title_before_label(lines: list[str], label_index: int) -> str | None:
+    window = lines[max(0, label_index - 8) : label_index]
+    for line in reversed(window):
+        embedded = _extract_embedded_drink_title(line)
+        if embedded:
+            return _title_case(embedded)
+        candidate = _clean_title_candidate(line)
+        if not candidate or _is_creator_or_ui_line(candidate):
+            continue
+        if _looks_like_sentence_context(candidate):
+            continue
+        if ">>" in candidate:
+            candidate = re.sub(r"\s*>+\s*$", "", candidate).strip()
+        return _title_case(candidate)
+    return None
+
+
+def _extract_embedded_drink_title(line: str) -> str | None:
+    match = re.search(r"\ba\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){1,4})\b", line)
+    if match:
+        return match.group(1).strip(" .!")
+    return None
+
+
+def _looks_like_sentence_context(line: str) -> bool:
+    lower = line.lower()
+    if len(line) > 64:
+        return True
+    return any(
+        phrase in lower
+        for phrase in (
+            "this is your sign",
+            "it’s officially",
+            "it's officially",
+            "do you have",
+            "i’ll be serving",
+            "i'll be serving",
+            "comment ",
+        )
+    )
 
 
 def _looks_like_recipe_title(line: str) -> bool:
@@ -199,12 +294,25 @@ def _clean_title_candidate(line: str) -> str | None:
     if len(cleaned) > 80:
         return None
     lower = cleaned.lower()
-    if lower in {"follow", "following", "log in", "sign up"}:
+    if _is_creator_or_ui_line(lower):
         return None
-    if lower.endswith(" people") or lower == "notjustabartender":
+    if lower.endswith(" people"):
         return None
     cleaned = re.sub(r"^[\"'“”]+|[\"'“”]+$", "", cleaned)
     return cleaned
+
+
+def _is_creator_or_ui_line(line: str) -> bool:
+    lower = line.lower().strip()
+    return lower in {
+        "follow",
+        "following",
+        "log in",
+        "sign up",
+        "notjustabartender",
+        "join_jules",
+        "kentuckyginger",
+    }
 
 
 def _extract_base_spirit(lower_text: str) -> str | None:
@@ -277,10 +385,23 @@ def _looks_like_ingredient_line(line: str) -> bool:
     return lower in {"ginger beer", "angostura® aromatic bitters, to top"}
 
 
+def _looks_like_contextual_ingredient_line(line: str) -> bool:
+    lower = line.lower()
+    if _looks_like_sentence_context(line):
+        return False
+    if re.search(r"[.!?]", line) and not re.search(r"^(juice of|splash of|handful of|lots of|mint for garnish)\b", lower):
+        return False
+    if re.search(r"^(juice of|splash of|handful of|lots of|mint for garnish)\b", lower):
+        return True
+    if re.search(r"\b(olives|cocktail onions|vermouth|wine|gin|bourbon|tequila|mezcal|rum|vodka|lillet|ginger beer|crushed ice)\b", lower):
+        return len(line) <= 80
+    return False
+
+
 def _looks_like_method_start(line: str) -> bool:
     return bool(
         re.search(
-            r"^(combine|in a |toast|add ice|serve|store|top with|muddle|dirty dump|strain)",
+            r"^(combine|in a |toast|add ice|add a few ice|mix|serve|store|top with|muddle|dirty dump|strain|blend)",
             line,
             re.IGNORECASE,
         )
@@ -297,6 +418,7 @@ def _is_instagram_tail_line(line: str) -> bool:
 
 
 def _title_case(title: str) -> str:
-    if not _looks_like_recipe_title(title):
-        return title
-    return " ".join(word[:1].upper() + word[1:].lower() for word in title.split())
+    cleaned = re.sub(r"\s*>+\s*$", "", title).strip()
+    if not _looks_like_recipe_title(cleaned):
+        return cleaned
+    return " ".join(word[:1].upper() + word[1:].lower() for word in cleaned.split())
