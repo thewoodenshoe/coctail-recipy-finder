@@ -275,6 +275,7 @@ def search_gold_recipes(
     session: Session,
     query: str = "",
     creator_handle: str | None = None,
+    base_spirit: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
     fts_query = _fts_query(query)
@@ -283,6 +284,9 @@ def search_gold_recipes(
     if creator_handle:
         filters.append("gold_recipes.creator_handle = :creator_handle")
         params["creator_handle"] = creator_handle
+    if base_spirit:
+        filters.append("gold_recipes.base_spirits_json LIKE :base_spirit")
+        params["base_spirit"] = f'%"{base_spirit.lower()}"%'
     if fts_query:
         params["fts_query"] = fts_query
         filters.append("gold_recipe_search_index MATCH :fts_query")
@@ -301,6 +305,40 @@ def search_gold_recipes(
                 ON gold_recipe_search_index.gold_recipe_id = gold_recipes.id
             WHERE {where}
             ORDER BY rank, COALESCE(gold_recipes.quality_score, 0) DESC, gold_recipes.transformed_at DESC
+            LIMIT :limit
+            """
+        ),
+        params,
+    ).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def featured_gold_recipes(
+    session: Session,
+    base_spirit: str | None = None,
+    limit: int = 6,
+) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {"limit": limit}
+    filters = ["gold_recipes.status = 'active'"]
+    if base_spirit:
+        filters.append("gold_recipes.base_spirits_json LIKE :base_spirit")
+        params["base_spirit"] = f'%"{base_spirit.lower()}"%'
+    where = " AND ".join(filters)
+    rows = session.execute(
+        text(
+            f"""
+            SELECT
+                gold_recipes.*,
+                raw_posts.local_image_path,
+                COALESCE(gold_recipes.view_count, gold_recipes.like_count, 0) AS popularity_count
+            FROM gold_recipes
+            JOIN raw_posts
+                ON raw_posts.id = gold_recipes.raw_post_id
+            WHERE {where}
+            ORDER BY
+                COALESCE(gold_recipes.view_count, gold_recipes.like_count, 0) DESC,
+                COALESCE(gold_recipes.quality_score, 0) DESC,
+                gold_recipes.id DESC
             LIMIT :limit
             """
         ),

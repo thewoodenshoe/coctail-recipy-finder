@@ -1,64 +1,104 @@
 {% extends "base.html" %}
 {% block title %}Search - Cocktail Recipe Finder{% endblock %}
 {% block content %}
-  <section class="toolbar">
-    <form method="get" action="/" class="search-form">
-      <input type="search" name="q" value="{{ q }}" placeholder="Search gin, mezcal, negroni...">
-      <select name="creator">
-        <option value="">All creators</option>
-        {% for creator in creators %}
-          <option value="{{ creator.handle }}" {% if creator_filter == creator.handle %}selected{% endif %}>@{{ creator.handle }}</option>
-        {% endfor %}
-      </select>
+  <section class="search-hero">
+    <form method="get" action="/" class="hero-search-form">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search cocktails, ingredients, creators..." aria-label="Search cocktails, ingredients, creators">
+      {% if creator_filter %}<input type="hidden" name="creator" value="{{ creator_filter }}">{% endif %}
+      {% if base_filter %}<input type="hidden" name="base" value="{{ base_filter }}">{% endif %}
+      {% if quick_filter %}<input type="hidden" name="quick" value="{{ quick_filter }}">{% endif %}
       <button type="submit">Search</button>
     </form>
-  </section>
 
-  <section>
-    <div class="section-heading">
-      <h1>Recipe Index</h1>
-      <a class="button-secondary" href="/import">Import caption</a>
-    </div>
-    {% if results %}
-      <div class="results">
-        {% for result in results %}
-          <article class="result-card">
-            {% if result.image_url %}
-              <a href="{{ result.detail_path }}" class="result-image-link">
-                <img class="result-image" src="{{ result.image_url }}" alt="{{ result.drink_name or 'Cocktail post image' }}">
-              </a>
-            {% endif %}
-            <div class="result-body">
-              <div class="result-meta">@{{ result.creator_handle }}</div>
-              <h2><a href="{{ result.detail_path }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h2>
-              <div class="tags">
-                {% for spirit in result.base_spirits %}
-                  <span>{{ spirit }}</span>
-                {% endfor %}
-              </div>
-              {% if result.ingredients %}
-                <h3>Ingredients</h3>
-                <ul class="compact-list">
-                  {% for ingredient in result.ingredients[:8] %}
-                    <li>{{ ingredient }}</li>
-                  {% endfor %}
-                </ul>
-              {% endif %}
-              {% if result.method %}
-                <h3>Method</h3>
-                <p>{{ result.method }}</p>
-              {% endif %}
-              {% if result.show_garnish %}
-                <h3>Garnish</h3>
-                <p>{{ result.garnish }}</p>
-              {% endif %}
-              <a href="{{ result.source_url }}" target="_blank" rel="noopener noreferrer">Original Instagram post</a>
-            </div>
-          </article>
+    <div class="filter-block">
+      <div class="filter-label">Base spirits:</div>
+      <div class="chip-row">
+        {% for item in base_spirit_filters %}
+          <a class="chip {% if base_filter == item.value %}chip-active{% endif %}" href="/?base={{ item.value }}">{{ item.label }}</a>
         {% endfor %}
       </div>
-    {% else %}
-      <p class="empty-state">No indexed posts yet. Import a caption or run the sync command.</p>
-    {% endif %}
+    </div>
+
+    <div class="filter-block">
+      <div class="filter-label">Quick filters:</div>
+      <div class="chip-row">
+        {% for item in quick_filters %}
+          <a class="chip {% if quick_filter == item.value %}chip-active{% endif %}" href="/?quick={{ item.value }}">{{ item.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  {% if active_search %}
+    <section class="search-results-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Search results</p>
+          <h1>Recipe Index</h1>
+        </div>
+        <a class="button-secondary" href="/">Clear filters</a>
+      </div>
+      {% if results %}
+        <div class="results">
+          {% for result in results %}
+            {% include "_result_card.html" %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty-state">No matching recipes yet. Try a broader ingredient, spirit, or creator search.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="featured-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Featured</p>
+        <h1>Popular recipes</h1>
+      </div>
+      <a class="button-secondary" href="/import">Import caption</a>
+    </div>
+
+    <div class="featured-group">
+      <div class="featured-heading">
+        <h2>Most viewed gin cocktails</h2>
+        <a href="/?base=gin">View all</a>
+      </div>
+      <div class="featured-grid">
+        {% for result in featured_gin %}
+          {% include "_featured_card.html" %}
+        {% else %}
+          <p class="empty-state">No gin recipes are indexed yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="featured-group">
+      <div class="featured-heading">
+        <h2>Most viewed bourbon cocktails</h2>
+        <a href="/?base=bourbon">View all</a>
+      </div>
+      <div class="featured-grid">
+        {% for result in featured_bourbon %}
+          {% include "_featured_card.html" %}
+        {% else %}
+          <p class="empty-state">No bourbon recipes are indexed yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="featured-group">
+      <div class="featured-heading">
+        <h2>Creator favorites</h2>
+        <span>Most viewed across creators</span>
+      </div>
+      <div class="featured-grid">
+        {% for result in featured_creator %}
+          {% include "_featured_card.html" %}
+        {% else %}
+          <p class="empty-state">No active recipes are indexed yet.</p>
+        {% endfor %}
+      </div>
+    </div>
   </section>
 {% endblock %}

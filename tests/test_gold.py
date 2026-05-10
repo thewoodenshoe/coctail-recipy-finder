@@ -4,6 +4,7 @@ from sqlalchemy import func, select, text
 
 from app.gold import (
     clear_all_data,
+    featured_gold_recipes,
     rebuild_gold_search_index,
     search_gold_recipes,
     transform_raw_posts,
@@ -53,6 +54,60 @@ def test_rebuild_gold_search_and_query_structured_recipe(db_session):
     results = search_gold_recipes(db_session, "bourbon strawberries")
     assert len(results) == 1
     assert results[0]["drink_title"] == "Kentucky Buck"
+
+
+def test_gold_search_filters_by_base_spirit(db_session):
+    creator = Creator(
+        handle="notjustabartender",
+        profile_url="https://www.instagram.com/notjustabartender/",
+        active=True,
+    )
+    db_session.add(creator)
+    db_session.flush()
+    for url, caption in [
+        ("https://www.instagram.com/p/gin/", "Gin Sour\n2 oz gin\n1 oz lemon\nShake hard."),
+        ("https://www.instagram.com/p/bourbon/", "Gold Rush\n2 oz bourbon\n.75 oz lemon\nShake hard."),
+    ]:
+        upsert_raw_post_from_ingested(
+            db_session,
+            creator,
+            IngestedPost(source_url=url, caption_text=caption, raw_text=caption),
+            provider_name="test",
+        )
+    transform_raw_posts(db_session)
+    db_session.commit()
+
+    results = search_gold_recipes(db_session, base_spirit="gin")
+
+    assert [row["drink_title"] for row in results] == ["Gin Sour"]
+
+
+def test_featured_gold_recipes_prefers_popularity_then_quality(db_session):
+    creator = Creator(
+        handle="notjustabartender",
+        profile_url="https://www.instagram.com/notjustabartender/",
+        active=True,
+    )
+    db_session.add(creator)
+    db_session.flush()
+    for url, caption, views in [
+        ("https://www.instagram.com/p/low/", "Low View Gin\n2 oz gin\nShake hard.", 10),
+        ("https://www.instagram.com/p/high/", "High View Gin\n2 oz gin\n1 oz lemon\nShake hard.", 250),
+    ]:
+        raw_post, _created = upsert_raw_post_from_ingested(
+            db_session,
+            creator,
+            IngestedPost(source_url=url, caption_text=caption, raw_text=caption),
+            provider_name="test",
+        )
+        raw_post.raw_view_count = views
+    transform_raw_posts(db_session)
+    db_session.commit()
+
+    results = featured_gold_recipes(db_session, "gin", limit=2)
+
+    assert [row["drink_title"] for row in results] == ["High View Gin", "Low View Gin"]
+    assert results[0]["popularity_count"] == 250
 
 
 def test_transform_raw_posts_creates_extraction_and_gold(db_session):

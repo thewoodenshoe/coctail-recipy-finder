@@ -1,0 +1,36 @@
+<article class="result-card {% if not result.image_url %}result-card-no-image{% endif %}">
+  {% if result.image_url %}
+    <a href="{{ result.detail_path }}" class="result-image-link">
+      <img class="result-image" src="{{ result.image_url }}" alt="{{ result.drink_name or 'Cocktail post image' }}">
+    </a>
+  {% endif %}
+  <div class="result-body">
+    <div class="result-meta">
+      <span>@{{ result.creator_handle }}</span>
+      {% if result.popularity_label %}<span>{{ result.popularity_label }}</span>{% endif %}
+    </div>
+    <h2><a href="{{ result.detail_path }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h2>
+    <div class="tags">
+      {% for spirit in result.base_spirits %}
+        <span>{{ spirit }}</span>
+      {% endfor %}
+    </div>
+    {% if result.ingredients %}
+      <h3>Ingredients</h3>
+      <ul class="compact-list">
+        {% for ingredient in result.ingredients[:8] %}
+          <li>{{ ingredient }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% if result.method %}
+      <h3>Method</h3>
+      <p>{{ result.method }}</p>
+    {% endif %}
+    {% if result.show_garnish %}
+      <h3>Garnish</h3>
+      <p>{{ result.garnish }}</p>
+    {% endif %}
+    <a href="{{ result.source_url }}" target="_blank" rel="noopener noreferrer">Original Instagram post</a>
+  </div>
+</article>

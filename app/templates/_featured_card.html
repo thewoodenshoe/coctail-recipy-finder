@@ -1,0 +1,24 @@
+<article class="featured-card">
+  {% if result.image_url %}
+    <a href="{{ result.detail_path }}" class="featured-image-link">
+      <img class="featured-image" src="{{ result.image_url }}" alt="{{ result.drink_name or 'Cocktail post image' }}">
+    </a>
+  {% endif %}
+  <div class="featured-card-body">
+    <div class="result-meta">
+      <span>@{{ result.creator_handle }}</span>
+      {% if result.popularity_label %}<span>{{ result.popularity_label }}</span>{% endif %}
+    </div>
+    <h3><a href="{{ result.detail_path }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h3>
+    {% if result.base_spirits %}
+      <div class="tags">
+        {% for spirit in result.base_spirits[:3] %}
+          <span>{{ spirit }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if result.ingredients %}
+      <p>{{ result.ingredients[:3] | join(", ") }}</p>
+    {% endif %}
+  </div>
+</article>

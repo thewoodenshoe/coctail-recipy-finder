@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR, get_settings
 from app.db import get_db, init_database
-from app.gold import search_gold_recipes
+from app.gold import featured_gold_recipes, search_gold_recipes
 from app.models import Creator, GoldRecipe, RawPost
 from app.services import import_caption_to_gold
 
@@ -22,6 +22,34 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
 app.mount("/media", StaticFiles(directory=str(get_settings().media_dir)), name="media")
 
+BASE_SPIRIT_FILTERS = [
+    {"label": "Gin", "value": "gin"},
+    {"label": "Bourbon", "value": "bourbon"},
+    {"label": "Tequila", "value": "tequila"},
+    {"label": "Rum", "value": "rum"},
+    {"label": "Mezcal", "value": "mezcal"},
+    {"label": "Vodka", "value": "vodka"},
+]
+
+QUICK_FILTERS = [
+    {"label": "Easy", "value": "easy"},
+    {"label": "3 ingredients", "value": "three_ingredients"},
+    {"label": "Not too sweet", "value": "not_too_sweet"},
+    {"label": "Citrusy", "value": "citrusy"},
+    {"label": "Bitter", "value": "bitter"},
+    {"label": "Summer", "value": "summer"},
+    {"label": "Spirit-forward", "value": "spirit_forward"},
+]
+
+QUICK_FILTER_TERMS = {
+    "easy": {"easy", "simple", "quick", "built"},
+    "not_too_sweet": {"not too sweet", "dry", "tart", "acid", "lemon", "lime", "grapefruit"},
+    "citrusy": {"citrus", "lemon", "lime", "grapefruit", "orange", "yuzu"},
+    "bitter": {"bitter", "bitters", "campari", "aperol", "amaro", "fernet"},
+    "summer": {"summer", "tropical", "pineapple", "watermelon", "coconut", "refreshing"},
+    "spirit_forward": {"spirit forward", "old fashioned", "martini", "manhattan", "negroni", "stirred"},
+}
+
 
 @app.on_event("startup")
 def startup() -> None:
@@ -29,17 +57,44 @@ def startup() -> None:
 
 
 @app.get("/")
-def home(request: Request, q: str = "", creator: str = "", db: Session = Depends(get_db)):
+def home(
+    request: Request,
+    q: str = "",
+    creator: str = "",
+    base: str = "",
+    quick: str = "",
+    db: Session = Depends(get_db),
+):
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
-    results = search_gold_recipes(db, q, creator or None)
+    valid_base = _valid_filter_value(base, BASE_SPIRIT_FILTERS)
+    valid_quick = _valid_filter_value(quick, QUICK_FILTERS)
+    active_search = bool(q or creator or valid_base or valid_quick)
+    raw_results = search_gold_recipes(
+        db,
+        q,
+        creator or None,
+        valid_base,
+        limit=160 if valid_quick else 50,
+    )
+    decorated_results = [_decorate_result(row) for row in raw_results]
+    if valid_quick:
+        decorated_results = [row for row in decorated_results if _matches_quick_filter(row, valid_quick)][:50]
     return templates.TemplateResponse(
         "search.html",
         {
             "request": request,
             "q": q,
             "creator_filter": creator,
+            "base_filter": valid_base,
+            "quick_filter": valid_quick,
+            "base_spirit_filters": BASE_SPIRIT_FILTERS,
+            "quick_filters": QUICK_FILTERS,
             "creators": creators,
-            "results": [_decorate_result(row) for row in results],
+            "results": decorated_results if active_search else [],
+            "active_search": active_search,
+            "featured_gin": [_decorate_result(row) for row in featured_gold_recipes(db, "gin")],
+            "featured_bourbon": [_decorate_result(row) for row in featured_gold_recipes(db, "bourbon")],
+            "featured_creator": [_decorate_result(row) for row in featured_gold_recipes(db)],
         },
     )
 
@@ -145,7 +200,46 @@ def _decorate_result(row: dict) -> dict:
     row["image_url"] = _media_url(row.get("local_image_path"))
     row["short_caption"] = (row.get("caption_text") or "")[:220]
     row["show_garnish"] = bool(row.get("garnish") and row.get("garnish") != row.get("method"))
+    popularity = row.get("view_count") or row.get("like_count") or row.get("popularity_count")
+    row["popularity_label"] = _format_count(popularity)
     return row
+
+
+def _valid_filter_value(value: str, filters: list[dict[str, str]]) -> str:
+    values = {item["value"] for item in filters}
+    return value if value in values else ""
+
+
+def _matches_quick_filter(row: dict, quick_filter: str) -> bool:
+    if quick_filter == "three_ingredients":
+        ingredients = row.get("ingredients") or []
+        return 0 < len(ingredients) <= 3
+    text = " ".join(
+        str(value or "")
+        for value in [
+            row.get("drink_name"),
+            row.get("intro_text"),
+            row.get("method"),
+            row.get("garnish"),
+            " ".join(row.get("ingredients") or []),
+            " ".join(row.get("base_spirits") or []),
+        ]
+    ).lower()
+    return any(term in text for term in QUICK_FILTER_TERMS.get(quick_filter, set()))
+
+
+def _format_count(value: int | str | None) -> str:
+    if value in (None, ""):
+        return ""
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return ""
+    if count >= 1_000_000:
+        return f"{count / 1_000_000:.1f}M"
+    if count >= 1_000:
+        return f"{count / 1_000:.1f}K"
+    return str(count)
 
 
 def _media_url(local_image_path: str | None) -> str | None:
