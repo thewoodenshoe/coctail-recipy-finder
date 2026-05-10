@@ -19,6 +19,7 @@ class Settings:
     instagram_backfill_max_posts: int = 120
     instagram_incremental_max_posts: int = 30
     instagram_unchanged_stop_count: int = 12
+    media_dir: Path = BASE_DIR / "data" / "media"
 
 
 def get_settings() -> Settings:
@@ -39,4 +40,5 @@ def get_settings() -> Settings:
         instagram_backfill_max_posts=int(os.getenv("INSTAGRAM_BACKFILL_MAX_POSTS", "120")),
         instagram_incremental_max_posts=int(os.getenv("INSTAGRAM_INCREMENTAL_MAX_POSTS", "30")),
         instagram_unchanged_stop_count=int(os.getenv("INSTAGRAM_UNCHANGED_STOP_COUNT", "12")),
+        media_dir=Path(os.getenv("MEDIA_DIR", str(BASE_DIR / "data" / "media"))),
     )

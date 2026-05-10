@@ -11,7 +11,7 @@ from app.models import Creator
 
 ABSOLUTE_POST_URL_RE = re.compile(r"https://www\.instagram\.com/(?:p|reel)/[A-Za-z0-9_-]+/?")
 RELATIVE_POST_URL_RE = re.compile(r"/(?:p|reel)/[A-Za-z0-9_-]+/?")
-BLOCKED_RESOURCE_TYPES = {"image", "media", "font"}
+BLOCKED_RESOURCE_TYPES = {"media", "font"}
 
 
 def save_instagram_session(session_state_path: Path, headless: bool = False) -> None:
@@ -75,6 +75,9 @@ def fetch_instagram_post_text(session_state_path: Path, source_url: str) -> Inge
         page.goto(source_url, wait_until="domcontentloaded", timeout=45000)
         page.wait_for_timeout(1200)
         raw_text = _clean_page_text(page.locator("body").inner_text(timeout=15000))
+        external_post_id = _post_id_from_url(source_url)
+        thumbnail_url = _extract_thumbnail_url(page)
+        local_image_path, image_status, image_error = _capture_post_image(page, external_post_id)
         browser.close()
 
     caption_text = _extract_best_caption(raw_text)
@@ -85,7 +88,11 @@ def fetch_instagram_post_text(session_state_path: Path, source_url: str) -> Inge
         source_url=source_url,
         caption_text=caption_text,
         raw_text=raw_text,
-        external_post_id=_post_id_from_url(source_url),
+        external_post_id=external_post_id,
+        raw_thumbnail_url=thumbnail_url,
+        local_image_path=local_image_path,
+        image_capture_status=image_status,
+        image_capture_error=image_error,
         fetch_seconds=elapsed,
     )
 
@@ -142,6 +149,11 @@ class InstagramBrowserProvider:
                     post_page.goto(url, wait_until="domcontentloaded", timeout=45000)
                     post_page.wait_for_timeout(1200)
                     raw_text = _clean_page_text(post_page.locator("body").inner_text(timeout=15000))
+                    external_post_id = _post_id_from_url(url)
+                    thumbnail_url = _extract_thumbnail_url(post_page)
+                    local_image_path, image_status, image_error = _capture_post_image(
+                        post_page, external_post_id
+                    )
                     post_page.close()
                 except PlaywrightTimeoutError:
                     continue
@@ -154,7 +166,11 @@ class InstagramBrowserProvider:
                     source_url=url,
                     caption_text=caption_text,
                     raw_text=raw_text,
-                    external_post_id=_post_id_from_url(url),
+                    external_post_id=external_post_id,
+                    raw_thumbnail_url=thumbnail_url,
+                    local_image_path=local_image_path,
+                    image_capture_status=image_status,
+                    image_capture_error=image_error,
                 )
                 posts.append(ingested)
 
@@ -175,6 +191,34 @@ def _abort_heavy_resources(route) -> None:
         route.abort()
         return
     route.continue_()
+
+
+def _extract_thumbnail_url(page) -> str | None:
+    for selector in (
+        "meta[property='og:image']",
+        "meta[name='twitter:image']",
+    ):
+        try:
+            value = page.locator(selector).first.get_attribute("content", timeout=1000)
+        except Exception:
+            value = None
+        if value:
+            return value
+    return None
+
+
+def _capture_post_image(page, external_post_id: str | None) -> tuple[str | None, str, str | None]:
+    if not external_post_id:
+        return None, "skipped", "missing external_post_id"
+    settings = get_settings()
+    media_dir = settings.media_dir.expanduser() / "raw_posts"
+    media_dir.mkdir(parents=True, exist_ok=True)
+    image_path = media_dir / f"{external_post_id}.png"
+    try:
+        page.screenshot(path=str(image_path), full_page=False, timeout=10000)
+    except Exception as exc:
+        return None, "failed", str(exc)
+    return str(image_path), "captured", None
 
 
 def _discover_post_urls_from_page(page, max_posts: int) -> list[str]:
@@ -271,6 +315,8 @@ def _is_instagram_error_page(raw_text: str) -> bool:
             "sorry, this page isn't available",
             "the link you followed may be broken",
             "page may have been removed",
+            "age-restricted content",
+            "log in to continue",
         )
     )
 

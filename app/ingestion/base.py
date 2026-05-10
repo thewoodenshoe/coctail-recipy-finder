@@ -13,6 +13,10 @@ class IngestedPost:
     caption_text: str
     raw_text: str | None = None
     external_post_id: str | None = None
+    raw_thumbnail_url: str | None = None
+    local_image_path: str | None = None
+    image_capture_status: str | None = None
+    image_capture_error: str | None = None
     posted_at: datetime | None = None
     fetch_seconds: float | None = None
 

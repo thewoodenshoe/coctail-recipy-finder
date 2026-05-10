@@ -40,6 +40,18 @@ Instagram Lite
     assert _extract_best_caption(raw) == ""
 
 
+def test_browser_text_helpers_reject_age_restricted_page():
+    raw = """
+Age-restricted content
+This content is age-restricted based on your age or account settings. Log in to continue.
+Consumer Health Privacy
+Popular
+Instagram Lite
+"""
+
+    assert _extract_best_caption(raw) == ""
+
+
 def test_post_id_from_instagram_url():
     assert _post_id_from_url("https://www.instagram.com/p/DXnYlmJjk48/") == "DXnYlmJjk48"
     assert _post_id_from_url("https://www.instagram.com/reel/ABC123/") == "ABC123"

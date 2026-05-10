@@ -33,8 +33,28 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 
 def init_database(db_engine: Engine = engine) -> None:
     Base.metadata.create_all(bind=db_engine)
+    add_raw_post_media_columns(db_engine)
     drop_obsolete_sqlite_tables(db_engine)
     create_gold_search_index(db_engine)
+
+
+def add_raw_post_media_columns(db_engine: Engine) -> None:
+    if db_engine.dialect.name != "sqlite":
+        return
+    columns = {
+        "raw_thumbnail_url": "TEXT",
+        "local_image_path": "TEXT",
+        "image_capture_status": "VARCHAR(64)",
+        "image_capture_error": "TEXT",
+    }
+    with db_engine.begin() as connection:
+        existing = {
+            row[1]
+            for row in connection.execute(text("PRAGMA table_info(raw_posts)")).all()
+        }
+        for column_name, column_type in columns.items():
+            if column_name not in existing:
+                connection.execute(text(f"ALTER TABLE raw_posts ADD COLUMN {column_name} {column_type}"))
 
 
 def drop_obsolete_sqlite_tables(db_engine: Engine) -> None:

@@ -79,6 +79,10 @@ def upsert_raw_post_from_ingested(
             raw_json=json.dumps(raw_payload, ensure_ascii=True),
             raw_caption_text=caption_text,
             raw_hashtags_json=json.dumps(_hashtags(caption_text), ensure_ascii=True),
+            raw_thumbnail_url=ingested.raw_thumbnail_url,
+            local_image_path=ingested.local_image_path,
+            image_capture_status=ingested.image_capture_status,
+            image_capture_error=ingested.image_capture_error,
             posted_at=ingested.posted_at,
             capture_completeness="text_only",
             ingestion_provider=provider_name,
@@ -95,6 +99,10 @@ def upsert_raw_post_from_ingested(
         raw_post.raw_json = json.dumps(raw_payload, ensure_ascii=True)
         raw_post.raw_caption_text = caption_text
         raw_post.raw_hashtags_json = json.dumps(_hashtags(caption_text), ensure_ascii=True)
+        raw_post.raw_thumbnail_url = ingested.raw_thumbnail_url or raw_post.raw_thumbnail_url
+        raw_post.local_image_path = ingested.local_image_path or raw_post.local_image_path
+        raw_post.image_capture_status = ingested.image_capture_status or raw_post.image_capture_status
+        raw_post.image_capture_error = ingested.image_capture_error
         raw_post.posted_at = ingested.posted_at or raw_post.posted_at
         raw_post.capture_completeness = "text_only"
         raw_post.ingestion_provider = provider_name

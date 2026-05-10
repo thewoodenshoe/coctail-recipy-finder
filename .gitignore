@@ -28,6 +28,10 @@ storage-state.json
 *.sqlite
 *.sqlite3
 cocktail_index.db
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/media/
 
 # Logs and runtime files
 *.log
