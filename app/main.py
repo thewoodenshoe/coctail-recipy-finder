@@ -19,6 +19,7 @@ from app.services import import_caption_to_gold
 
 app = FastAPI(title="Cocktail Recipe Finder")
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
+get_settings().media_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
 app.mount("/media", StaticFiles(directory=str(get_settings().media_dir)), name="media")
 
