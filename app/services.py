@@ -131,8 +131,11 @@ def sync_creators_from_config(
             creator.last_sync_at = now
             creator.sync_error = None
             if decision == "backfill":
-                creator.backfill_completed_at = now
-                creator.sync_status = "backfilled"
+                if imported:
+                    creator.backfill_completed_at = now
+                    creator.sync_status = "backfilled"
+                else:
+                    creator.sync_status = "backfill_no_posts"
             else:
                 creator.sync_status = "incremental_synced"
             actions.append(

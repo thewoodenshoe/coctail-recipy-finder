@@ -39,4 +39,4 @@ creators:
     actions = sync_creators_from_config(db_session, path)
     db_session.commit()
     assert actions[0].action == "backfill"
-    assert actions[0].status == "backfilled"
+    assert actions[0].status == "backfill_no_posts"

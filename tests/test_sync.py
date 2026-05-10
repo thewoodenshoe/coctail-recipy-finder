@@ -157,3 +157,30 @@ creators:
     assert actions[0].status == "backfilled"
     assert db_session.query(RawPost).count() == 1
     assert db_session.query(GoldRecipe).count() == 1
+
+
+def test_backfill_without_posts_does_not_mark_backfill_complete(db_session, tmp_path: Path):
+    class EmptyProvider:
+        def backfill(self, creator):
+            return IngestionResult(posts=[], message="no posts")
+
+        def incremental(self, creator):
+            return IngestionResult(posts=[], message="no posts")
+
+    path = tmp_path / "creators.yml"
+    path.write_text(
+        """
+creators:
+  - handle: thirstywhale_
+    profile_url: "https://www.instagram.com/thirstywhale_/"
+    active: true
+"""
+    )
+
+    actions = sync_creators_from_config(db_session, path, provider=EmptyProvider())
+    db_session.commit()
+
+    creator = db_session.query(Creator).filter(Creator.handle == "thirstywhale_").one()
+    assert actions[0].status == "backfill_no_posts"
+    assert creator.sync_status == "backfill_no_posts"
+    assert creator.backfill_completed_at is None
