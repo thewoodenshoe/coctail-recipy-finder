@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.creators import CreatorConfig, load_creator_config, normalize_handle
@@ -22,6 +24,18 @@ class SyncAction:
     action: str
     status: str
     message: str = ""
+
+
+@dataclass(frozen=True)
+class BulkImportResult:
+    creator_handle: str
+    rows_seen: int
+    imported: int
+    skipped: int
+    active: int
+    not_recipe: int
+    low_confidence: int
+    failed: int
 
 
 def provider_for_name(name: str | None) -> IngestionProvider:
@@ -92,6 +106,144 @@ def import_caption_to_gold(
     return gold
 
 
+def import_instagram_jsonl_to_gold(
+    session: Session,
+    creator_handle: str,
+    jsonl_path: str | Path,
+    profile_url: str | None = None,
+    transform: bool = True,
+    replace_creator_data: bool = False,
+) -> BulkImportResult:
+    handle = normalize_handle(creator_handle)
+    creator_config = CreatorConfig(
+        handle=handle,
+        profile_url=profile_url or f"https://www.instagram.com/{handle}/",
+        active=True,
+    )
+    creator, _is_new = upsert_creator(session, creator_config)
+    if replace_creator_data:
+        _clear_creator_pipeline_data(session, creator.handle)
+    creator.sync_status = "jsonl_importing"
+    session.flush()
+
+    rows_seen = 0
+    imported = 0
+    skipped = 0
+    path = Path(jsonl_path)
+    with path.open(encoding="utf-8") as file:
+        for line_number, line in enumerate(file, start=1):
+            if not line.strip():
+                continue
+            rows_seen += 1
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Invalid JSON on line {line_number} of {path}") from exc
+            if row.get("creator_handle") and normalize_handle(str(row["creator_handle"])) != handle:
+                skipped += 1
+                continue
+            if row.get("ok") is False:
+                skipped += 1
+                continue
+            source_url = _jsonl_source_url(row)
+            if not source_url:
+                skipped += 1
+                continue
+            caption_text = str(row.get("caption_text") or "").strip()
+            raw_text = str(row.get("og_description") or caption_text).strip() or caption_text
+            ingested = IngestedPost(
+                source_url=source_url,
+                caption_text=caption_text,
+                raw_text=raw_text,
+                external_post_id=str(row.get("post_id") or "").strip() or None,
+                raw_thumbnail_url=str(row.get("image_url") or "").strip() or None,
+                image_capture_status="metadata_only" if row.get("image_url") else "missing_public_image_metadata",
+            )
+            upsert_raw_post_from_ingested(
+                session,
+                creator,
+                ingested,
+                provider_name="jsonl_caption_import",
+            )
+            imported += 1
+
+    counts = {"active": 0, "not_recipe": 0, "low_confidence": 0, "failed": 0}
+    if transform:
+        transform_counts = transform_raw_posts(session, creator.handle)
+        counts = {
+            "active": transform_counts["active"],
+            "not_recipe": transform_counts["not_recipe"],
+            "low_confidence": transform_counts["low_confidence"],
+            "failed": transform_counts["failed"],
+        }
+    now = datetime.now(timezone.utc)
+    creator.last_sync_at = now
+    creator.backfill_completed_at = now
+    creator.sync_error = None
+    creator.sync_status = "jsonl_imported"
+    return BulkImportResult(
+        creator_handle=creator.handle,
+        rows_seen=rows_seen,
+        imported=imported,
+        skipped=skipped,
+        active=counts["active"],
+        not_recipe=counts["not_recipe"],
+        low_confidence=counts["low_confidence"],
+        failed=counts["failed"],
+    )
+
+
+def _jsonl_source_url(row: dict) -> str:
+    for key in ("canonical_url", "final_url", "original_url", "source_url", "url"):
+        value = str(row.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _clear_creator_pipeline_data(session: Session, creator_handle: str) -> None:
+    session.execute(
+        text(
+            """
+            DELETE FROM gold_recipe_search_index
+            WHERE gold_recipe_id IN (
+                SELECT id FROM gold_recipes WHERE creator_handle = :creator_handle
+            )
+            """
+        ),
+        {"creator_handle": creator_handle},
+    )
+    session.execute(
+        text("DELETE FROM gold_recipes WHERE creator_handle = :creator_handle"),
+        {"creator_handle": creator_handle},
+    )
+    session.execute(
+        text(
+            """
+            DELETE FROM recipe_extractions
+            WHERE raw_post_id IN (
+                SELECT raw_posts.id
+                FROM raw_posts
+                JOIN creators ON creators.id = raw_posts.creator_id
+                WHERE creators.handle = :creator_handle
+            )
+            """
+        ),
+        {"creator_handle": creator_handle},
+    )
+    session.execute(
+        text(
+            """
+            DELETE FROM raw_posts
+            WHERE creator_id IN (
+                SELECT id FROM creators WHERE handle = :creator_handle
+            )
+            """
+        ),
+        {"creator_handle": creator_handle},
+    )
+
+
 def sync_creators_from_config(
     session: Session,
     config_path,
@@ -135,6 +287,7 @@ def sync_creators_from_config(
                     creator.backfill_completed_at = now
                     creator.sync_status = "backfilled"
                 else:
+                    creator.backfill_completed_at = None
                     creator.sync_status = "backfill_no_posts"
             else:
                 creator.sync_status = "incremental_synced"

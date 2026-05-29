@@ -110,6 +110,167 @@ In a tin, muddle strawberries. Garnish with a strawberry.
     assert recipe.base_spirits == ["bourbon"]
 
 
+def test_extract_thirstywhale_recipe_ignores_handle_and_maps_jameson():
+    caption = """thirstywhale_
+Jameson Triple Triple Sour
+2 oz Jameson Triple Triple
+3/4 oz lemon
+1/3 oz orgeat
+2 dashes cocoa bitters
+3/4 oz egg whites
+Dry shake, add ice and shake again, then strain into a coupe glass.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Jameson Triple Triple Sour"
+    assert recipe.base_spirits == ["whiskey"]
+    assert "2 oz Jameson Triple Triple" in recipe.ingredients
+    assert recipe.method is not None
+    assert "Dry shake" in recipe.method
+
+
+def test_extract_thirstywhale_labeled_recipe_keeps_drops_soda_and_full_method():
+    caption = """thirstywhale_
+Jameson & Ginger
+Ingredients:
+45 ml Jameson Original
+15 ml lime syrup
+15 ml ginger syrup
+2 drops salt solution
+Soda
+Stir in a highball glass with ice and top with soda water.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Jameson & Ginger"
+    assert "2 drops salt solution" in recipe.ingredients
+    assert "Soda" in recipe.ingredients
+    assert recipe.method == "Stir in a highball glass with ice and top with soda water."
+
+
+def test_extract_thirstywhale_made_with_caption_title_and_ingredients():
+    caption = """Can you beat the classic espresso tini? I don’t think so.
+
+Yeah, it’s fun to swap things out and get creative—but the classics never die.
+
+This one’s made with Svedka Vodka:
+1.5 oz vodka
+1.5 oz espresso
+0.5 oz coffee liqueur
+0.25 oz rich syrup
+
+I don’t do the espresso beans on top… I hit it with a little orange oil instead.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Espresso Tini"
+    assert recipe.base_spirits == ["vodka"]
+    assert recipe.ingredients == [
+        "1.5 oz vodka",
+        "1.5 oz espresso",
+        "0.5 oz coffee liqueur",
+        "0.25 oz rich syrup",
+    ]
+
+
+def test_extract_thirstywhale_recipe_stops_before_explanatory_paragraph():
+    caption = """BATCHED PALOMA
+20 oz Tequila
+10 oz Grapefruit
+5 oz Lime
+2.5 oz Agave Syrup
+2.5 oz Grapefruit Oleo Syrup
+2 dashes Salt Solution or not
+16 oz Club Soda
+
+It’s beach season, and a tasty Paloma is always a good choice.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Batched Paloma"
+    assert "16 oz Club Soda" in recipe.ingredients
+    assert "It’s beach season, and a tasty Paloma is always a good choice." not in recipe.ingredients
+
+
+def test_extract_thirstywhale_keeps_recipe_note_method_out_of_ingredients():
+    caption = """Less is more
+
+RED RAIDER
+1.5 oz Bourbon
+.5 oz Cointreau
+.5 oz Real Grenadine
+.75 oz Lemon Juice
+
+I think two drops of saline and two drops of absinthe make this drink nice. Always shake hard!
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Red Raider"
+    assert recipe.ingredients == [
+        "1.5 oz Bourbon",
+        ".5 oz Cointreau",
+        ".5 oz Real Grenadine",
+        ".75 oz Lemon Juice",
+    ]
+    assert recipe.method == "I think two drops of saline and two drops of absinthe make this drink nice. Always shake hard!"
+
+
+def test_extract_highproofpreacher_spaced_multiline_title():
+    caption = """highproofpreacher
+B E T T E R
+J U D G E M E N T
+—
+2 oz Mijenta Tequila Reposado
+¾ oz Fresh lemon juice
+½ oz Passion Fruit syrup
+¾ oz Cynar (float)
+Fresh mint
+
+Combine ingredients (except for Cynar) and shake with ice.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Better Judgement"
+    assert "2 oz Mijenta Tequila Reposado" in recipe.ingredients
+    assert "Fresh mint" in recipe.ingredients
+    assert recipe.base_spirits == ["tequila"]
+
+
+def test_extract_highproofpreacher_numbered_spaced_title():
+    caption = """064. G R E E N  E M B E R
+O L D  F A S H I O N E D
+—
+1½ oz Tequila Reposado
+¾ oz Green Chile Vodka
+¼ oz Passion fruit syrup
+4 dashes Aromatic bitters
+Lime twist
+
+Combine ingredients and stir with ice.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Green Ember Old Fashioned"
+    assert "¾ oz Green Chile Vodka" in recipe.ingredients
+    assert recipe.base_spirits == ["tequila", "vodka"]
+
+
+def test_extract_highproofpreacher_separator_does_not_become_title():
+    caption = """Brine & Sunshine
+–
+1.5 oz Tres Agaves Blanco
+¾ oz Carrot juice
+½ oz Fresh lime
+½ oz pickle brine
+
+Shake with ice, strain over fresh ice.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Brine & Sunshine"
+    assert "½ oz pickle brine" in recipe.ingredients
+
+
 def test_extract_multiple_base_spirits():
     caption = """SPLIT BASE SOUR
 1 oz gin

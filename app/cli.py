@@ -11,7 +11,11 @@ from app.gold import (
     transform_raw_posts,
 )
 from app.creators import normalize_handle
-from app.services import import_caption_to_gold, provider_for_name, sync_creators_from_config
+from app.services import (
+    import_instagram_jsonl_to_gold,
+    provider_for_name,
+    sync_creators_from_config,
+)
 
 
 def main() -> None:
@@ -30,10 +34,16 @@ def main() -> None:
     transform_parser = subparsers.add_parser("transform-raw", help="Transform raw_posts into recipe_extractions and gold_recipes")
     transform_parser.add_argument("--creator", help="Transform only one creator handle")
 
-    import_parser = subparsers.add_parser("import-caption", help="Import one pasted caption")
-    import_parser.add_argument("--creator", required=True)
-    import_parser.add_argument("--url", required=True)
-    import_parser.add_argument("--caption-file", required=True)
+    import_jsonl_parser = subparsers.add_parser("import-jsonl", help="Import captured Instagram JSONL rows")
+    import_jsonl_parser.add_argument("--creator", required=True)
+    import_jsonl_parser.add_argument("--jsonl-file", required=True)
+    import_jsonl_parser.add_argument("--profile-url")
+    import_jsonl_parser.add_argument("--skip-transform", action="store_true")
+    import_jsonl_parser.add_argument(
+        "--replace-creator-data",
+        action="store_true",
+        help="Delete existing raw/extracted/gold rows for this creator before importing",
+    )
 
     args = parser.parse_args()
     settings = get_settings()
@@ -87,12 +97,27 @@ def main() -> None:
             )
         return
 
-    if args.command == "import-caption":
+    if args.command == "import-jsonl":
         init_database()
-        caption = Path(args.caption_file).read_text()
         with session_scope() as session:
-            recipe = import_caption_to_gold(session, args.creator, args.url, caption)
-            print(f"Imported gold recipe {recipe.id}: {recipe.source_url}")
+            result = import_instagram_jsonl_to_gold(
+                session,
+                args.creator,
+                Path(args.jsonl_file),
+                profile_url=args.profile_url,
+                transform=not args.skip_transform,
+                replace_creator_data=args.replace_creator_data,
+            )
+            print(
+                f"Imported @{result.creator_handle}: "
+                f"{result.rows_seen} rows seen, "
+                f"{result.imported} imported, "
+                f"{result.skipped} skipped, "
+                f"{result.active} active, "
+                f"{result.not_recipe} not_recipe, "
+                f"{result.low_confidence} low_confidence, "
+                f"{result.failed} failed"
+            )
         return
 
 

@@ -20,12 +20,32 @@ mkdir -p data
 DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db .venv/bin/python -m app.cli init-db
 ```
 
-Run creator sync to register configured creators. The current provider is intentionally a stub; content is added through manual or creator-provided source text import.
+Run creator sync to register configured creators. The current provider is intentionally conservative; bulk content is added through captured creator-provided JSONL files.
 
 ```bash
 DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db \
 .venv/bin/python -m app.cli sync-creators
 ```
+
+## Bulk JSONL Import
+
+Captured Instagram JSONL files can be imported and transformed into the searchable gold index:
+
+```bash
+DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db \
+.venv/bin/python -m app.cli import-jsonl \
+  --creator thirstywhale_ \
+  --jsonl-file ~/imports/temp_whale.txt \
+  --replace-creator-data
+
+DATABASE_URL=sqlite:////home/ubuntu/projects/coctail-recipy-finder/data/cocktail_index.db \
+.venv/bin/python -m app.cli import-jsonl \
+  --creator highproofpreacher \
+  --jsonl-file ~/imports/temp_highproofpreacher.json \
+  --replace-creator-data
+```
+
+Use `--replace-creator-data` when the JSONL file is the authoritative source for that creator; it removes stale raw/extracted/gold rows for that creator before importing.
 
 ## Direct-Port Smoke Run
 

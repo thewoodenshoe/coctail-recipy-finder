@@ -184,3 +184,45 @@ creators:
     assert actions[0].status == "backfill_no_posts"
     assert creator.sync_status == "backfill_no_posts"
     assert creator.backfill_completed_at is None
+
+
+def test_empty_forced_backfill_clears_stale_completion(db_session, tmp_path: Path):
+    class EmptyProvider:
+        def backfill(self, creator):
+            return IngestionResult(posts=[], message="no posts")
+
+        def incremental(self, creator):
+            return IngestionResult(posts=[], message="no posts")
+
+    db_session.add(
+        Creator(
+            handle="thirstywhale_",
+            profile_url="https://www.instagram.com/thirstywhale_/",
+            active=True,
+            backfill_completed_at=datetime.now(timezone.utc),
+            sync_status="backfilled",
+        )
+    )
+    db_session.commit()
+
+    path = tmp_path / "creators.yml"
+    path.write_text(
+        """
+creators:
+  - handle: thirstywhale_
+    profile_url: "https://www.instagram.com/thirstywhale_/"
+    active: true
+"""
+    )
+
+    actions = sync_creators_from_config(
+        db_session,
+        path,
+        provider=EmptyProvider(),
+        force_backfill=True,
+    )
+    db_session.commit()
+
+    creator = db_session.query(Creator).filter(Creator.handle == "thirstywhale_").one()
+    assert actions[0].status == "backfill_no_posts"
+    assert creator.backfill_completed_at is None

@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form, Request
-from fastapi.responses import RedirectResponse, Response
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR, get_settings
 from app.db import get_db, init_database
 from app.gold import featured_gold_recipes, search_gold_recipes
 from app.models import Creator, GoldRecipe, RawPost
-from app.services import import_caption_to_gold
 
 
 app = FastAPI(title="Cocktail Recipe Finder")
@@ -26,10 +24,14 @@ app.mount("/media", StaticFiles(directory=str(get_settings().media_dir)), name="
 BASE_SPIRIT_FILTERS = [
     {"label": "Gin", "value": "gin"},
     {"label": "Bourbon", "value": "bourbon"},
+    {"label": "Whiskey", "value": "whiskey"},
+    {"label": "Rye", "value": "rye"},
     {"label": "Tequila", "value": "tequila"},
     {"label": "Rum", "value": "rum"},
     {"label": "Mezcal", "value": "mezcal"},
     {"label": "Vodka", "value": "vodka"},
+    {"label": "Campari", "value": "campari"},
+    {"label": "Aperol", "value": "aperol"},
 ]
 
 QUICK_FILTERS = [
@@ -120,34 +122,8 @@ def creators_page(request: Request, db: Session = Depends(get_db)):
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
     return templates.TemplateResponse(
         "creators.html",
-        {"request": request, "creators": creators},
+        {"request": request, "creators": creators, "creator_stats": _creator_stats(db)},
     )
-
-
-@app.get("/import")
-def import_page(request: Request):
-    return templates.TemplateResponse("import.html", {"request": request, "error": None})
-
-
-@app.post("/import")
-def import_caption(
-    request: Request,
-    creator: str = Form(...),
-    source_url: str = Form(...),
-    caption_text: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    try:
-        recipe = import_caption_to_gold(db, creator, source_url, caption_text)
-        db.commit()
-    except Exception as exc:
-        db.rollback()
-        return templates.TemplateResponse(
-            "import.html",
-            {"request": request, "error": str(exc)},
-            status_code=400,
-        )
-    return RedirectResponse(url=f"/gold/{recipe.id}", status_code=303)
 
 
 @app.get("/gold/{gold_id}")
@@ -204,6 +180,30 @@ def _decorate_result(row: dict) -> dict:
     popularity = row.get("view_count") or row.get("like_count") or row.get("popularity_count")
     row["popularity_label"] = _format_count(popularity)
     return row
+
+
+def _creator_stats(db: Session) -> dict[str, dict[str, int]]:
+    stats: dict[str, dict[str, int]] = {}
+    raw_counts = db.execute(
+        select(Creator.handle, func.count(RawPost.id))
+        .join(RawPost, RawPost.creator_id == Creator.id, isouter=True)
+        .group_by(Creator.handle)
+    ).all()
+    for handle, count in raw_counts:
+        stats.setdefault(handle, {"raw_posts": 0, "active_recipes": 0, "not_recipes": 0})
+        stats[handle]["raw_posts"] = int(count or 0)
+
+    gold_counts = db.execute(
+        select(GoldRecipe.creator_handle, GoldRecipe.status, func.count(GoldRecipe.id))
+        .group_by(GoldRecipe.creator_handle, GoldRecipe.status)
+    ).all()
+    for handle, status, count in gold_counts:
+        stats.setdefault(handle, {"raw_posts": 0, "active_recipes": 0, "not_recipes": 0})
+        if status == "active":
+            stats[handle]["active_recipes"] = int(count or 0)
+        elif status == "not_recipe":
+            stats[handle]["not_recipes"] = int(count or 0)
+    return stats
 
 
 def _display_title(row: dict, ingredients: list[str]) -> str:

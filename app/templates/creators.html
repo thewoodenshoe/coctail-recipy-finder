@@ -7,6 +7,9 @@
       <thead>
         <tr>
           <th>Handle</th>
+          <th>Raw posts</th>
+          <th>Active recipes</th>
+          <th>Non-recipes</th>
           <th>Status</th>
           <th>Last sync</th>
           <th>Backfilled</th>
@@ -16,8 +19,12 @@
       </thead>
       <tbody>
         {% for creator in creators %}
+          {% set stats = creator_stats.get(creator.handle, {}) %}
           <tr>
             <td><a href="{{ creator.profile_url }}" target="_blank" rel="noopener noreferrer">@{{ creator.handle }}</a></td>
+            <td>{{ stats.get("raw_posts", 0) }}</td>
+            <td><a href="/?creator={{ creator.handle }}">{{ stats.get("active_recipes", 0) }}</a></td>
+            <td>{{ stats.get("not_recipes", 0) }}</td>
             <td>{{ creator.sync_status }}</td>
             <td>{{ creator.last_sync_at or "never" }}</td>
             <td>{{ creator.backfill_completed_at or "no" }}</td>

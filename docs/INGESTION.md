@@ -56,18 +56,18 @@ Later options can include:
 
 ## Current Implementation
 
-The current working ingestion path is manual caption import.
+The current working ingestion path is captured creator-provided JSONL import. Each JSONL row should contain at least a source URL and caption text. Rows are imported into `raw_posts`, transformed into extraction records, and promoted into the searchable gold index.
 
 Available commands:
 
 ```bash
 python -m app.cli sync-creators
-python -m app.cli import-caption --creator HANDLE --url URL --caption-file FILE
+python -m app.cli import-jsonl --creator HANDLE --jsonl-file FILE --replace-creator-data
 ```
 
 `sync-creators` reads `config/creators.yml`, upserts creators into the database, detects newly configured creators, and chooses backfill or incremental sync.
 
-Unauthenticated public Instagram collection is intentionally not implemented. `app/ingestion/instagram_public.py` is a stubbed provider that records a clear status message instead of depending on brittle or non-approved automation.
+Unauthenticated public Instagram collection remains conservative. Bulk imports should use approved creator-provided or otherwise authorized captured source text.
 
 ## Explicit Non-Goals
 

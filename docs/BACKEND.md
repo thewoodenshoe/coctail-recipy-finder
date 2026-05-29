@@ -5,7 +5,7 @@
 The backend provides:
 
 - Creator registry visibility.
-- Manual raw post import.
+- Bulk captured JSONL import.
 - Raw post deduplication by source URL.
 - Recipe transformation into extraction history.
 - Gold recipe promotion.
@@ -16,8 +16,6 @@ The backend provides:
 
 - `GET /` - gold recipe search page.
 - `GET /?q=...` - gold recipe search results.
-- `GET /import` - manual import form.
-- `POST /import` - create raw post, transform it, redirect to gold detail.
 - `GET /gold/{gold_id}` - gold recipe detail page.
 - `GET /creators` - creator list.
 
@@ -28,7 +26,7 @@ The backend provides:
 - `python -m app.cli transform-raw [--creator HANDLE]`
 - `python -m app.cli rebuild-gold-search`
 - `python -m app.cli sync-creators`
-- `python -m app.cli import-caption --creator HANDLE --url URL --caption-file FILE`
+- `python -m app.cli import-jsonl --creator HANDLE --jsonl-file FILE [--replace-creator-data]`
 
 ## Service Boundaries
 
