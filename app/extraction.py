@@ -4,35 +4,7 @@ import json
 import re
 from dataclasses import dataclass
 
-
-BASE_SPIRITS = [
-    "gin",
-    "bourbon",
-    "whiskey",
-    "rye",
-    "tequila",
-    "mezcal",
-    "rum",
-    "vodka",
-    "brandy",
-    "cognac",
-    "campari",
-    "aperol",
-]
-
-BRAND_SPIRIT_MAP = {
-    "four roses": "bourbon",
-    "four roses oeso": "bourbon",
-    "jameson": "whiskey",
-    "jameson original": "whiskey",
-    "jameson triple triple": "whiskey",
-    "mijenta": "tequila",
-    "mijenta tequila": "tequila",
-    "mijenta reposado": "tequila",
-    "mijenta tequila blanco": "tequila",
-    "luxardo del santo": "herbal liqueur",
-    "angostura": "bitters",
-}
+from app.ingredients import extract_base_spirits_from_ingredients, extract_base_spirits_from_text
 
 MEASUREMENT_RE = re.compile(
     r"(?<![A-Za-z0-9])(\d+\s*[¼½¾⅓⅔]|\d+([./]\d+)?|\.\d+|one|two|three|four|five|six|half|¼|½|¾|⅓|⅔)\s*"
@@ -81,8 +53,7 @@ def extract_recipe(caption_text: str) -> ExtractedRecipe:
 
     drink_name = recipe_block.drink_name if recipe_block else _extract_drink_name(lines)
     ingredients = _extract_ingredients(scoped_lines, recipe_block)
-    base_source_text = "\n".join([*ingredients, drink_name or ""])
-    base_spirits = _extract_base_spirits(base_source_text)
+    base_spirits = _extract_base_spirits_from_ingredients(ingredients)
     if not base_spirits:
         base_spirits = _extract_base_spirits(lower_text)
     base_spirit = base_spirits[0] if base_spirits else None
@@ -376,32 +347,12 @@ def _clean_separator_chars(line: str) -> str:
     return line.replace("\u2800", "").strip()
 
 
-def _extract_base_spirit(lower_text: str) -> str | None:
-    spirits = _extract_base_spirits(lower_text)
-    return spirits[0] if spirits else None
-
-
 def _extract_base_spirits(text: str) -> list[str]:
-    lower_text = text.lower()
-    found: list[str] = []
-    for spirit in BASE_SPIRITS:
-        if re.search(rf"\b{re.escape(spirit)}\b", lower_text):
-            found.append(spirit)
-    for brand, spirit in BRAND_SPIRIT_MAP.items():
-        if re.search(rf"\b{re.escape(brand)}\b", lower_text):
-            found.append(spirit)
-    return _dedupe_spirits(found)
+    return extract_base_spirits_from_text(text)
 
 
-def _dedupe_spirits(spirits: list[str]) -> list[str]:
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for spirit in spirits:
-        if spirit in seen:
-            continue
-        seen.add(spirit)
-        deduped.append(spirit)
-    return deduped
+def _extract_base_spirits_from_ingredients(ingredients: list[str]) -> list[str]:
+    return extract_base_spirits_from_ingredients(ingredients)
 
 
 def _extract_ingredients(lines: list[str], recipe_block: RecipeBlock | None = None) -> list[str]:

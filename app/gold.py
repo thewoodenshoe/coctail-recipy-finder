@@ -11,6 +11,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.extraction import extract_recipe
+from app.ingredients import classify_ingredient, ingredient_name
 from app.models import Creator, GoldRecipe, RawPost, RecipeExtraction
 
 
@@ -367,21 +368,36 @@ def _quality_score_from_extracted(extracted: dict[str, Any], confidence_score: f
 
 
 def _structured_ingredients(ingredients: list[str]) -> list[dict[str, str | None]]:
-    return [
-        {
-            "raw_text": ingredient,
-            "name": _ingredient_name(ingredient),
-            "normalized_name": normalize_title(_ingredient_name(ingredient)),
-            "amount": None,
-            "unit": None,
-        }
-        for ingredient in ingredients
-    ]
+    structured = []
+    for ingredient in ingredients:
+        name = ingredient_name(ingredient)
+        normalized_name = normalize_title(name)
+        if _is_invalid_ingredient_name(name, normalized_name):
+            continue
+        classification = classify_ingredient(ingredient)
+        structured.append(
+            {
+                "raw_text": ingredient,
+                "name": name,
+                "normalized_name": normalized_name,
+                "category": classification.category,
+                "label": classification.label,
+                "alcohol_family": classification.alcohol_family,
+                "amount": None,
+                "unit": None,
+            }
+        )
+    return structured
+
+
+def _is_invalid_ingredient_name(name: str, normalized_name: str | None) -> bool:
+    if not normalized_name:
+        return True
+    return normalized_name in {"or", "and"}
 
 
 def _ingredient_name(raw_text: str) -> str:
-    text_value = re.sub(r"^[\d./-]+\s*(ounces|ounce|cups|cup|grams|g|oz|ml|tbsp|tsp|dashes|dash|parts|part)?\s*(\|\s*[\d./-]+\s*(oz|ml))?\s*", "", raw_text, flags=re.IGNORECASE)
-    return text_value.strip() or raw_text
+    return ingredient_name(raw_text)
 
 
 def _ingredient_terms(ingredients_json: str) -> list[str]:
@@ -392,6 +408,8 @@ def _ingredient_terms(ingredients_json: str) -> list[str]:
                 [
                     str(ingredient.get("normalized_name") or ""),
                     str(ingredient.get("name") or ""),
+                    str(ingredient.get("label") or ""),
+                    str(ingredient.get("category") or ""),
                     str(ingredient.get("raw_text") or ""),
                 ]
             )
