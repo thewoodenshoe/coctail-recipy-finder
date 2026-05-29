@@ -35,7 +35,7 @@ BRAND_SPIRIT_MAP = {
 }
 
 MEASUREMENT_RE = re.compile(
-    r"(?<![A-Za-z0-9])(\d+([./]\d+)?|\.\d+|one|two|three|four|five|six|half|¼|½|¾)\s*"
+    r"(?<![A-Za-z0-9])(\d+\s*[¼½¾⅓⅔]|\d+([./]\d+)?|\.\d+|one|two|three|four|five|six|half|¼|½|¾|⅓|⅔)\s*"
     r"(oz|ounce|ounces|ml|dash|dashes|drop|drops|barspoon|tsp|tbsp|part|parts)\b",
     re.IGNORECASE,
 )
@@ -332,7 +332,7 @@ def _looks_like_recipe_title(line: str) -> bool:
 
 
 def _clean_title_candidate(line: str) -> str | None:
-    cleaned = line.strip().strip(":")
+    cleaned = _clean_separator_chars(line).strip(":")
     if not cleaned:
         return None
     if _is_separator_line(cleaned):
@@ -368,7 +368,12 @@ def _is_creator_or_ui_line(line: str) -> bool:
 
 
 def _is_separator_line(line: str) -> bool:
-    return bool(re.fullmatch(r"[-–—]+", line.strip()))
+    cleaned = _clean_separator_chars(line)
+    return not cleaned or bool(re.fullmatch(r"[.\-–—]+", cleaned))
+
+
+def _clean_separator_chars(line: str) -> str:
+    return line.replace("\u2800", "").strip()
 
 
 def _extract_base_spirit(lower_text: str) -> str | None:

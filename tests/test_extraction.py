@@ -271,6 +271,66 @@ Shake with ice, strain over fresh ice.
     assert "½ oz pickle brine" in recipe.ingredients
 
 
+def test_extract_highproofpreacher_dot_delimited_title():
+    caption = """Breaking out some refreshing drink recipes.
+.
+Summer in the Backyard
+.
+1.5oz gin (@aviationgin)
+3/4oz fresh lime juice
+1/2oz honey water (@beelocal)
+2 strawberries
+2dash angostura bitters
+Soda
+.
+Muddle strawberries in a shaker with the honey water & bitters.
+.
+#highproofpreacher
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Summer in the Backyard"
+    assert "1.5oz gin (@aviationgin)" in recipe.ingredients
+    assert "Soda" in recipe.ingredients
+
+
+def test_extract_highproofpreacher_unicode_spacer_title():
+    caption = """This cocktail is a slightly smokey Manhattan riff.
+⠀⠀⠀⠀⠀⠀⠀⠀⠀
+Small Wonder
+⠀⠀⠀⠀⠀⠀⠀⠀⠀
+2 oz Brandy
+¾ oz Amaro
+½ oz Smokey Robinson chai syrup
+4 dashes cardamom bitters
+⠀⠀⠀⠀⠀⠀⠀⠀⠀
+Combine ingredients in a mixing glass and stir with ice.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Small Wonder"
+    assert "2 oz Brandy" in recipe.ingredients
+    assert recipe.base_spirits == ["brandy"]
+
+
+def test_extract_highproofpreacher_mixed_unicode_fraction_not_title():
+    caption = """Minke Martini
+⠀⠀⠀⠀⠀⠀⠀⠀⠀
+1½ oz Gin
+¾ oz blanc vermouth
+½ oz amontillado sherry
+3 drops sarsaparilla bitters
+lemon zest
+⠀⠀⠀⠀⠀⠀⠀⠀⠀
+Combine gin, vermouth and sherry in a mixing glass and stir with ice.
+"""
+    recipe = extract_recipe(caption)
+
+    assert recipe.drink_name == "Minke Martini"
+    assert "1½ oz Gin" in recipe.ingredients
+    assert recipe.drink_name != "1½ oz Gin"
+
+
 def test_extract_multiple_base_spirits():
     caption = """SPLIT BASE SOUR
 1 oz gin
