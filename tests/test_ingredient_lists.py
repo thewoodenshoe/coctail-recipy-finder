@@ -4,7 +4,7 @@ from app.ingredient_lists import (
     ingredient_list_items,
     update_ingredient_list,
 )
-from app.main import ranked_recipes_for_ingredient_list, ranked_search_results
+from app.main import _optional_int, ranked_recipes_for_ingredient_list, ranked_search_results
 from app.services import import_caption_to_gold
 
 
@@ -70,3 +70,10 @@ def test_combined_search_prefers_matching_terms(db_session):
     results = ranked_search_results(db_session, "apple vodka", [], [])
 
     assert results[0]["drink_name"] == "Apple Vodka Smash"
+
+
+def test_empty_list_id_is_ignored_instead_of_validation_error():
+    assert _optional_int("") is None
+    assert _optional_int(None) is None
+    assert _optional_int("not-an-id") is None
+    assert _optional_int("42") == 42

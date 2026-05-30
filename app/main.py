@@ -42,14 +42,15 @@ def home(
     request: Request,
     q: str = "",
     creator: str = "",
-    list_id: int | None = None,
+    list_id: str | None = None,
     db: Session = Depends(get_db),
 ):
+    parsed_list_id = _optional_int(list_id)
     list_action = request.query_params.get("list_action")
     if list_action:
         return _handle_ingredient_list_get_action(request, db)
     if request.query_params.get("view") == "my-list":
-        return _ingredient_list_response(request, db, list_id)
+        return _ingredient_list_response(request, db, parsed_list_id)
 
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
     catalog = ingredient_catalog(db)
@@ -70,7 +71,7 @@ def home(
         creator or None,
         limit=60,
     ) if active_search else []
-    current_list = selected_ingredient_list(db, list_id)
+    current_list = selected_ingredient_list(db, parsed_list_id)
     ingredient_list_matches = ranked_recipes_for_ingredient_list(db, current_list.id, limit=18) if current_list else []
     visible_alcohol, more_alcohol = _split_alcohol_options(catalog["alcohol"])
     visible_ingredients, more_ingredients = _split_ingredient_options(catalog["ingredient"])
@@ -194,10 +195,10 @@ def creators_page(request: Request, db: Session = Depends(get_db)):
 @app.get("/my-ingredient-list")
 def my_ingredient_list(
     request: Request,
-    list_id: int | None = None,
+    list_id: str | None = None,
     db: Session = Depends(get_db),
 ):
-    return _ingredient_list_response(request, db, list_id)
+    return _ingredient_list_response(request, db, _optional_int(list_id))
 
 
 @app.post("/my-list/create")
@@ -489,6 +490,15 @@ def _selected_values(request: Request, key: str) -> list[str]:
         if clean_value and clean_value not in values:
             values.append(clean_value)
     return values
+
+
+def _optional_int(value: str | int | None) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _split_alcohol_options(options: list) -> tuple[list, list]:
