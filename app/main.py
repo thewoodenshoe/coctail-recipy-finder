@@ -130,6 +130,7 @@ def creators_page(request: Request, db: Session = Depends(get_db)):
     )
 
 
+@app.get("/my-list")
 @app.get("/my-ingredient-list")
 def my_ingredient_list(
     request: Request,
@@ -153,14 +154,16 @@ def my_ingredient_list(
     )
 
 
+@app.post("/my-list/create")
 @app.post("/my-ingredient-list/create")
 async def create_my_ingredient_list(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
     ingredient_list = create_ingredient_list(db, str(form.get("name") or "New Ingredient List"))
     db.commit()
-    return RedirectResponse(f"/my-ingredient-list?list_id={ingredient_list.id}", status_code=303)
+    return RedirectResponse(f"/my-list?list_id={ingredient_list.id}", status_code=303)
 
 
+@app.post("/my-list/{list_id}/save")
 @app.post("/my-ingredient-list/{list_id}/save")
 async def save_my_ingredient_list(list_id: int, request: Request, db: Session = Depends(get_db)):
     form = await request.form()
@@ -173,15 +176,16 @@ async def save_my_ingredient_list(list_id: int, request: Request, db: Session = 
     )
     db.commit()
     if ingredient_list is None:
-        return RedirectResponse("/my-ingredient-list", status_code=303)
-    return RedirectResponse(f"/my-ingredient-list?list_id={ingredient_list.id}", status_code=303)
+        return RedirectResponse("/my-list", status_code=303)
+    return RedirectResponse(f"/my-list?list_id={ingredient_list.id}", status_code=303)
 
 
+@app.post("/my-list/{list_id}/delete")
 @app.post("/my-ingredient-list/{list_id}/delete")
 def delete_my_ingredient_list(list_id: int, db: Session = Depends(get_db)):
     delete_ingredient_list(db, list_id)
     db.commit()
-    return RedirectResponse("/my-ingredient-list", status_code=303)
+    return RedirectResponse("/my-list", status_code=303)
 
 
 @app.get("/gold/{gold_id}")
