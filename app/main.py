@@ -49,6 +49,8 @@ def home(
     list_action = request.query_params.get("list_action")
     if list_action:
         return _handle_ingredient_list_get_action(request, db)
+    if request.query_params.get("view") == "top":
+        return _popular_response(request, db)
     if request.query_params.get("view") == "my-list":
         return _ingredient_list_response(request, db, parsed_list_id)
 
@@ -190,6 +192,10 @@ def creators_page(request: Request, db: Session = Depends(get_db)):
 @app.get("/popular-cocktails")
 @app.get("/top-cocktails")
 def popular_page(request: Request, db: Session = Depends(get_db)):
+    return _popular_response(request, db)
+
+
+def _popular_response(request: Request, db: Session):
     creator_rows, creator_metric_title = creator_recipe_sections(db, per_creator=10)
     return templates.TemplateResponse(
         "popular.html",
