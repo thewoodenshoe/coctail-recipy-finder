@@ -188,6 +188,7 @@ def creators_page(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/popular")
 @app.get("/popular-cocktails")
+@app.get("/top-cocktails")
 def popular_page(request: Request, db: Session = Depends(get_db)):
     creator_rows, creator_metric_title = creator_recipe_sections(db, per_creator=10)
     return templates.TemplateResponse(
