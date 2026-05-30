@@ -276,7 +276,7 @@ button:hover,
 }
 
 .browse-panel {
-  margin-top: 26px;
+  margin-top: 30px;
   padding: 0;
   overflow: hidden;
 }
@@ -326,6 +326,44 @@ button:hover,
   display: grid;
   gap: 20px;
   padding: 0 18px 18px;
+}
+
+.page-intro {
+  max-width: 680px;
+  margin: -4px 0 24px;
+  color: var(--muted);
+}
+
+.popular-creator-stack {
+  display: grid;
+  gap: 22px;
+}
+
+.popular-creator-block {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(8, 17, 37, 0.78);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.18);
+}
+
+.popular-recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.popular-recipe-grid .featured-card {
+  width: 100%;
+  min-width: 0;
+}
+
+.compact-action {
+  width: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
 }
 
 .filter-block {
@@ -1210,6 +1248,16 @@ th {
 
   .featured-card {
     flex-basis: 52vw;
+  }
+
+  .popular-recipe-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .popular-creator-block {
+    padding: 11px;
+    border-radius: 16px;
   }
 
   .featured-card-body {

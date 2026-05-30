@@ -79,9 +79,6 @@ def home(
         more_alcohol = sorted(more_alcohol, key=lambda option: option.label)
     if request.query_params.get("ingredient_sort") == "alpha":
         more_ingredients = sorted(more_ingredients, key=lambda option: option.label)
-    top_creator_rows, creator_metric_title = creator_recipe_sections(db)
-    classic_links = popular_classics(db)
-    popular_results = [_decorate_result(row) for row in _active_recipe_rows(db, limit=12)]
     return templates.TemplateResponse(
         "search.html",
         {
@@ -107,10 +104,6 @@ def home(
             "ingredient_lists": saved_lists,
             "selected_ingredient_list": current_list,
             "ingredient_list_matches": ingredient_list_matches,
-            "creator_rows": top_creator_rows,
-            "creator_metric_title": creator_metric_title,
-            "classic_links": classic_links,
-            "popular_results": popular_results,
         },
     )
 
@@ -190,6 +183,19 @@ def creators_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(
         "creators.html",
         {"request": request, "creators": creators, "creator_stats": _creator_stats(db)},
+    )
+
+
+@app.get("/popular")
+def popular_page(request: Request, db: Session = Depends(get_db)):
+    creator_rows, creator_metric_title = creator_recipe_sections(db, per_creator=10)
+    return templates.TemplateResponse(
+        "popular.html",
+        {
+            "request": request,
+            "creator_rows": creator_rows,
+            "popular_metric_note": _popular_metric_note(creator_metric_title),
+        },
     )
 
 
@@ -356,14 +362,14 @@ def ranked_recipes_for_ingredient_list(db: Session, list_id: int, limit: int = 1
     return [row for *_rest, row in ranked[:limit]]
 
 
-def creator_recipe_sections(db: Session) -> tuple[list[dict], str]:
+def creator_recipe_sections(db: Session, per_creator: int = 8) -> tuple[list[dict], str]:
     metric_title = _creator_metric_title(db)
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
     rows = []
     for creator in creators:
         recipes = [
             _decorate_result(row)
-            for row in _active_recipe_rows(db, creator_handle=creator.handle, limit=8)
+            for row in _active_recipe_rows(db, creator_handle=creator.handle, limit=per_creator)
         ]
         if recipes:
             rows.append({"creator": creator, "recipes": recipes})
@@ -483,6 +489,14 @@ def _creator_metric_title(db: Session) -> str:
     if like_count:
         return "Most Liked by Creator"
     return "Top Recipes by Creator"
+
+
+def _popular_metric_note(metric_title: str) -> str:
+    if metric_title == "Top Viewed by Creator":
+        return "Ranked by real recipe views. Showing up to 10 recipes per creator."
+    if metric_title == "Most Liked by Creator":
+        return "Ranked by imported likes. Showing up to 10 recipes per creator."
+    return "Ranked by the best internal recipe score available. Showing up to 10 recipes per creator."
 
 
 def _selected_values(request: Request, key: str) -> list[str]:

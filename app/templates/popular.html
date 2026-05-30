@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Popular Cocktails - Cocktail Finder{% endblock %}
+{% block content %}
+  <section class="popular-page">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Popular</p>
+        <h1>Popular cocktails by creator</h1>
+      </div>
+    </div>
+    <p class="page-intro">{{ popular_metric_note }}</p>
+
+    <div class="popular-creator-stack">
+      {% for row in creator_rows %}
+        <section class="popular-creator-block">
+          <div class="featured-heading">
+            <div>
+              <p class="eyebrow">@{{ row.creator.handle }}</p>
+              <h2>{{ row.creator.display_name or row.creator.handle }}</h2>
+            </div>
+            <a class="button-secondary compact-action" href="/?creator={{ row.creator.handle }}">Search creator</a>
+          </div>
+          <div class="popular-recipe-grid">
+            {% for result in row.recipes[:10] %}
+              {% include "_featured_card.html" %}
+            {% endfor %}
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

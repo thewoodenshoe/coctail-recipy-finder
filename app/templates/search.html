@@ -31,12 +31,6 @@
       </form>
     </section>
 
-    <nav class="browse-menu" aria-label="Browse cocktails">
-      <a href="#featured">Popular</a>
-      <a href="#can-make">Can Make</a>
-      <a href="#browse">Browse</a>
-      <a href="#creators">Creators</a>
-    </nav>
   </section>
 
   {% if active_search %}
@@ -88,26 +82,12 @@
     </section>
   {% endif %}
 
-  <section id="featured" class="featured-section">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">{% if selected_ingredient_list %}Next best{% else %}Popular{% endif %}</p>
-        <h1>{% if selected_ingredient_list %}Popular cocktails{% else %}Popular cocktails{% endif %}</h1>
-      </div>
-    </div>
-    <div class="swimlane">
-      {% for result in popular_results %}
-        {% include "_featured_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
-
   <section id="browse" class="browse-panel">
-    <details>
+    <details open>
       <summary>
         <span>
-          <span class="eyebrow">Browse</span>
-          <strong>Bottles, flavors, and classics</strong>
+          <span class="eyebrow">Search by options</span>
+          <strong>Pick bottles and flavors</strong>
         </span>
       </summary>
       <div class="browse-content">
@@ -172,52 +152,7 @@
             {% endfor %}
           </div>
         </div>
-
-        <div class="classics-section">
-          <div class="filter-heading">
-            <div>
-              <p class="eyebrow">Classics</p>
-              <h2>Common drinks</h2>
-            </div>
-          </div>
-          <div class="classic-grid">
-            {% for classic in classic_links %}
-              <a class="classic-card" href="{{ classic.href }}">
-                <strong>{{ classic.label }}</strong>
-                <span>{{ classic.count }} indexed</span>
-              </a>
-            {% endfor %}
-          </div>
-        </div>
       </div>
     </details>
-  </section>
-
-  <section id="creators" class="creator-section">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">Creators</p>
-        <h1>Creators</h1>
-      </div>
-      <a class="button-secondary" href="/creators">View all</a>
-    </div>
-    <div class="creator-swimlanes">
-      {% for row in creator_rows %}
-        <div class="creator-lane">
-          <div class="featured-heading">
-            <div>
-              <p class="eyebrow">@{{ row.creator.handle }}</p>
-              <h2>{{ row.creator.display_name or row.creator.handle }}</h2>
-            </div>
-            <a href="/?creator={{ row.creator.handle }}">View all</a>
-          </div>
-          <div class="swimlane">
-            {% for result in row.recipes[:6] %}
-              {% include "_featured_card.html" %}
-            {% endfor %}
-          </div>
-        </div>
-      {% endfor %}
-    </div>
   </section>
 {% endblock %}
