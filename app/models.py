@@ -102,3 +102,22 @@ class GoldRecipe(Base):
     transformed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     transformer_version: Mapped[str] = mapped_column(String(128), nullable=False)
     status: Mapped[str] = mapped_column(String(64), default="active", nullable=False)
+
+
+class IngredientList(Base):
+    __tablename__ = "ingredient_lists"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class IngredientListItem(Base):
+    __tablename__ = "ingredient_list_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    list_id: Mapped[int] = mapped_column(ForeignKey("ingredient_lists.id"), nullable=False, index=True)
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    item_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

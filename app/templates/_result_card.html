@@ -10,6 +10,14 @@
       {% if result.popularity_label %}<span>{{ result.popularity_label }}</span>{% endif %}
     </div>
     <h2><a href="{{ result.detail_path }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h2>
+    {% if result.availability_status %}
+      <div class="availability-row">
+        <span class="availability-pill {% if result.missing_count == 0 %}can-make{% endif %}">{{ result.availability_status }}</span>
+        {% if result.missing_items %}
+          <small>Missing {{ result.missing_items|join(", ") }}</small>
+        {% endif %}
+      </div>
+    {% endif %}
     <div class="tags">
       {% for spirit in result.base_spirits %}
         <span>{{ spirit }}</span>
@@ -23,14 +31,6 @@
         {% endfor %}
       </ul>
     {% endif %}
-    {% if result.method %}
-      <h3>Method</h3>
-      <p>{{ result.method }}</p>
-    {% endif %}
-    {% if result.show_garnish %}
-      <h3>Garnish</h3>
-      <p>{{ result.garnish }}</p>
-    {% endif %}
-    <a class="source-link" href="{{ result.source_url }}" target="_blank" rel="noopener noreferrer">Original Instagram post</a>
+    <a class="source-link" href="{{ result.detail_path }}">View recipe</a>
   </div>
 </article>

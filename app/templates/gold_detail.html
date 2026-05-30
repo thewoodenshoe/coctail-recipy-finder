@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ recipe.drink_title or "Recipe" }} - Cocktail Recipe Finder{% endblock %}
+{% block title %}{{ recipe.drink_title or "Recipe" }} - Cocktail Finder{% endblock %}
 {% block content %}
   <article class="panel">
     <div class="result-meta">@{{ recipe.creator_handle }}</div>
@@ -28,10 +28,6 @@
       <dd>{{ recipe.method or "Unknown" }}</dd>
       <dt>Garnish</dt>
       <dd>{{ recipe.garnish or "Unknown" }}</dd>
-      <dt>Status</dt>
-      <dd>{{ recipe.status }}</dd>
-      <dt>Quality</dt>
-      <dd>{{ recipe.quality_score or "Unknown" }}</dd>
     </dl>
 
     {% if recipe.intro_text %}

@@ -1,46 +1,97 @@
 {% extends "base.html" %}
-{% block title %}Search - Cocktail Recipe Finder{% endblock %}
+{% block title %}Search - Cocktail Finder{% endblock %}
 {% block content %}
   <section class="search-hero">
-    <div class="hero-copy">
-      <p class="eyebrow">Cocktail index</p>
-      <h1>Find the next drink by spirit, ingredient, or creator.</h1>
-    </div>
     <form method="get" action="/" class="hero-search-form">
-      <input type="search" name="q" value="{{ q }}" placeholder="Search cocktails, ingredients, creators..." aria-label="Search cocktails, ingredients, creators">
-      {% if creator_filter %}<input type="hidden" name="creator" value="{{ creator_filter }}">{% endif %}
-      {% if base_filter %}<input type="hidden" name="base" value="{{ base_filter }}">{% endif %}
-      {% if quick_filter %}<input type="hidden" name="quick" value="{{ quick_filter }}">{% endif %}
+      <input type="search" name="q" value="{{ q }}" placeholder="Search margarita, apple vodka, lemon, gin..." aria-label="Search cocktails">
+      {% for item in selected_alcohol %}<input type="hidden" name="alcohol" value="{{ item }}">{% endfor %}
+      {% for item in selected_ingredients %}<input type="hidden" name="ingredient" value="{{ item }}">{% endfor %}
       <button type="submit">Search</button>
     </form>
+    <p class="search-hint">Try: espresso martini, orange bourbon, apple vodka, @thirstywhale_</p>
+  </section>
 
+  <section class="discovery-panel">
     <div class="filter-block">
-      <div class="filter-label">Base spirits:</div>
+      <div class="filter-heading">
+        <div>
+          <p class="eyebrow">Popular alcohol</p>
+          <h2>Start with the bottle</h2>
+        </div>
+        {% if more_alcohol %}
+          <div class="filter-tools">
+            <a href="{{ alcohol_sort_href }}">{{ alcohol_sort_label }}</a>
+            <form method="get" action="/" class="inline-select-form">
+              {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+              {% for item in selected_alcohol %}<input type="hidden" name="alcohol" value="{{ item }}">{% endfor %}
+              {% for item in selected_ingredients %}<input type="hidden" name="ingredient" value="{{ item }}">{% endfor %}
+              <select name="alcohol" aria-label="More alcohol">
+                <option value="">More alcohol</option>
+                {% for item in more_alcohol %}
+                  <option value="{{ item.name }}">{{ item.label }} ({{ item.count }})</option>
+                {% endfor %}
+              </select>
+              <button type="submit">Add</button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
       <div class="chip-row">
-        {% for item in base_spirit_filters %}
-          <a class="chip {% if base_filter == item.value %}chip-active{% endif %}" href="/?base={{ item.value }}">{{ item.label }}</a>
+        {% for item in popular_alcohol %}
+          <a class="chip {% if item.active %}chip-active{% endif %}" href="{{ item.href }}">{{ item.label }} <span>{{ item.count }}</span></a>
         {% endfor %}
       </div>
     </div>
 
     <div class="filter-block">
-      <div class="filter-label">Quick filters:</div>
+      <div class="filter-heading">
+        <div>
+          <p class="eyebrow">Popular ingredients</p>
+          <h2>Pick the flavor</h2>
+        </div>
+        {% if more_ingredients %}
+          <div class="filter-tools">
+            <a href="{{ ingredient_sort_href }}">{{ ingredient_sort_label }}</a>
+            <form method="get" action="/" class="inline-select-form">
+              {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+              {% for item in selected_alcohol %}<input type="hidden" name="alcohol" value="{{ item }}">{% endfor %}
+              {% for item in selected_ingredients %}<input type="hidden" name="ingredient" value="{{ item }}">{% endfor %}
+              <select name="ingredient" aria-label="More ingredients">
+                <option value="">More ingredients</option>
+                {% for item in more_ingredients %}
+                  <option value="{{ item.name }}">{{ item.label }} ({{ item.count }})</option>
+                {% endfor %}
+              </select>
+              <button type="submit">Add</button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
       <div class="chip-row">
-        {% for item in quick_filters %}
-          <a class="chip {% if quick_filter == item.value %}chip-active{% endif %}" href="/?quick={{ item.value }}">{{ item.label }}</a>
+        {% for item in popular_ingredients %}
+          <a class="chip {% if item.active %}chip-active{% endif %}" href="{{ item.href }}">{{ item.label }} <span>{{ item.count }}</span></a>
         {% endfor %}
       </div>
     </div>
+
+    {% if selected_filters %}
+      <div class="active-filters">
+        <span>Active filters</span>
+        {% for item in selected_filters %}
+          <a href="{{ item.href }}">{{ item.label }} ×</a>
+        {% endfor %}
+        <a class="clear-link" href="/">Clear all</a>
+      </div>
+    {% endif %}
   </section>
 
   {% if active_search %}
     <section class="search-results-section">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Search results</p>
-          <h1>Recipe Index</h1>
+          <p class="eyebrow">Results</p>
+          <h1>Best cocktail matches</h1>
         </div>
-        <a class="button-secondary" href="/">Clear filters</a>
       </div>
       {% if results %}
         <div class="results">
@@ -49,69 +100,108 @@
           {% endfor %}
         </div>
       {% else %}
-        <p class="empty-state">No matching recipes yet. Try a broader ingredient, spirit, or creator search.</p>
+        <p class="empty-state">No matching recipes yet. Try fewer filters or a broader search.</p>
       {% endif %}
     </section>
   {% endif %}
 
-  <section class="featured-section">
+  <section class="list-match-section">
     <div class="section-heading">
       <div>
-        <p class="eyebrow">Featured</p>
-        <h1>Popular recipes</h1>
+        <p class="eyebrow">Your bar</p>
+        <h1>All cocktails based on an ingredient list</h1>
       </div>
-      <a class="button-secondary" href="/creators">View creators</a>
+      <a class="button-secondary" href="/my-ingredient-list">Edit lists</a>
     </div>
-
-    <div class="featured-group">
-      <div class="featured-heading">
-        <div>
-          <p class="eyebrow">Gin</p>
-          <h2>Most viewed gin cocktails</h2>
-        </div>
-        <a href="/?base=gin">View all</a>
-      </div>
-      <div class="featured-grid">
-        {% for result in featured_gin %}
-          {% include "_featured_card.html" %}
-        {% else %}
-          <p class="empty-state">No gin recipes are indexed yet.</p>
+    <form method="get" action="/" class="list-picker">
+      <select name="list_id" aria-label="Select saved ingredient list">
+        <option value="">Select an ingredient list</option>
+        {% for item in ingredient_lists %}
+          <option value="{{ item.id }}" {% if selected_ingredient_list and selected_ingredient_list.id == item.id %}selected{% endif %}>{{ item.name }}</option>
         {% endfor %}
-      </div>
-    </div>
-
-    <div class="featured-group">
-      <div class="featured-heading">
-        <div>
-          <p class="eyebrow">Bourbon</p>
-          <h2>Most viewed bourbon cocktails</h2>
+      </select>
+      <button type="submit">Show matches</button>
+    </form>
+    {% if selected_ingredient_list %}
+      {% if ingredient_list_matches %}
+        <div class="results compact-results">
+          {% for result in ingredient_list_matches %}
+            {% include "_result_card.html" %}
+          {% endfor %}
         </div>
-        <a href="/?base=bourbon">View all</a>
-      </div>
-      <div class="featured-grid">
-        {% for result in featured_bourbon %}
-          {% include "_featured_card.html" %}
-        {% else %}
-          <p class="empty-state">No bourbon recipes are indexed yet.</p>
-        {% endfor %}
+      {% else %}
+        <p class="empty-state">This list is empty or has no matching recipes yet.</p>
+      {% endif %}
+    {% else %}
+      <p class="empty-state">Choose a saved list to see what you can make.</p>
+    {% endif %}
+  </section>
+
+  <section id="popular" class="creator-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Creators</p>
+        <h1>Popular by Creator</h1>
       </div>
     </div>
-
-    <div class="featured-group">
-      <div class="featured-heading">
-        <div>
-          <p class="eyebrow">Creators</p>
-          <h2>Creator favorites</h2>
+    <div class="creator-swimlanes">
+      {% for row in creator_rows %}
+        <div class="creator-lane">
+          <div class="featured-heading">
+            <div>
+              <p class="eyebrow">@{{ row.creator.handle }}</p>
+              <h2>{{ row.creator.display_name or row.creator.handle }}</h2>
+            </div>
+            <a href="/?creator={{ row.creator.handle }}">View all</a>
+          </div>
+          <div class="swimlane">
+            {% for result in row.recipes %}
+              {% include "_featured_card.html" %}
+            {% endfor %}
+          </div>
         </div>
-        <span>Most viewed across creators</span>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="creator-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">By creator</p>
+        <h1>{{ creator_metric_title }}</h1>
       </div>
-      <div class="featured-grid">
-        {% for result in featured_creator %}
-          {% include "_featured_card.html" %}
-        {% else %}
-          <p class="empty-state">No active recipes are indexed yet.</p>
-        {% endfor %}
+    </div>
+    <div class="creator-grid">
+      {% for row in creator_rows %}
+        <article class="creator-summary">
+          <h2>@{{ row.creator.handle }}</h2>
+          <div class="mini-list">
+            {% for result in row.recipes[:4] %}
+              <a href="{{ result.detail_path }}">
+                <span>{{ result.drink_name }}</span>
+                {% if result.base_spirits %}<small>{{ result.base_spirits|join(", ") }}</small>{% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="classics-section">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Classics</p>
+        <h1>Popular Classics</h1>
       </div>
+    </div>
+    <div class="classic-grid">
+      {% for classic in classic_links %}
+        <a class="classic-card" href="{{ classic.href }}">
+          <strong>{{ classic.label }}</strong>
+          <span>{{ classic.count }} indexed</span>
+        </a>
+      {% endfor %}
     </div>
   </section>
 {% endblock %}
