@@ -11,6 +11,23 @@
     <p class="search-hint">Try: espresso martini, orange bourbon, apple vodka, @thirstywhale_</p>
   </section>
 
+  <section class="classics-section top-classics">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Classics</p>
+        <h1>Popular Classics</h1>
+      </div>
+    </div>
+    <div class="classic-grid">
+      {% for classic in classic_links %}
+        <a class="classic-card" href="{{ classic.href }}">
+          <strong>{{ classic.label }}</strong>
+          <span>{{ classic.count }} indexed</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="discovery-panel">
     <div class="filter-block">
       <div class="filter-heading">
@@ -188,20 +205,4 @@
     </div>
   </section>
 
-  <section class="classics-section">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">Classics</p>
-        <h1>Popular Classics</h1>
-      </div>
-    </div>
-    <div class="classic-grid">
-      {% for classic in classic_links %}
-        <a class="classic-card" href="{{ classic.href }}">
-          <strong>{{ classic.label }}</strong>
-          <span>{{ classic.count }} indexed</span>
-        </a>
-      {% endfor %}
-    </div>
-  </section>
 {% endblock %}

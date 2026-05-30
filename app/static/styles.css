@@ -1,19 +1,19 @@
 :root {
   color-scheme: dark;
-  --ink: #fff8ed;
-  --muted: #c9bdaa;
-  --faint: #938777;
-  --page: #120f0d;
-  --surface: #1d1714;
-  --surface-2: #271f1a;
-  --line: rgba(255, 248, 237, 0.12);
-  --line-strong: rgba(255, 248, 237, 0.22);
-  --gold: #f0b35a;
-  --gold-2: #ffd089;
-  --green: #39b89f;
-  --green-dark: #0f6f60;
-  --red: #f27b7b;
-  --plum: #9c5f83;
+  --ink: #f7fbff;
+  --muted: #a8b8d8;
+  --faint: #7281a2;
+  --page: #050814;
+  --surface: #0a1024;
+  --surface-2: #0f1833;
+  --line: rgba(161, 190, 255, 0.14);
+  --line-strong: rgba(161, 190, 255, 0.28);
+  --gold: #31b7ff;
+  --gold-2: #7dd8ff;
+  --green: #47f0d4;
+  --green-dark: #139d91;
+  --red: #ff6b9a;
+  --plum: #7a5cff;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
 }
 
@@ -28,7 +28,9 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background: linear-gradient(180deg, #18110f 0, #120f0d 36rem, #15120f 100%);
+  background:
+    linear-gradient(180deg, rgba(18, 31, 69, 0.72) 0, rgba(5, 8, 20, 0.98) 30rem, #050814 100%),
+    #050814;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
@@ -54,7 +56,7 @@ a:hover {
   gap: 18px;
   padding: 14px 24px;
   border-bottom: 1px solid var(--line);
-  background: rgba(18, 15, 13, 0.88);
+  background: rgba(5, 8, 20, 0.88);
   backdrop-filter: blur(18px);
 }
 
@@ -121,8 +123,8 @@ textarea {
   border: 1px solid var(--line-strong);
   border-radius: 16px;
   padding: 12px 14px;
-  background: rgba(255, 248, 237, 0.96);
-  color: #15110e;
+  background: rgba(241, 247, 255, 0.97);
+  color: #071226;
 }
 
 .hero-search-form input {
@@ -144,7 +146,7 @@ button,
   border-radius: 16px;
   padding: 11px 16px;
   background: var(--gold);
-  color: #17100c;
+  color: #03101f;
   font-weight: 900;
   cursor: pointer;
 }
@@ -153,7 +155,7 @@ button:hover,
 .button-secondary:hover,
 .source-link:hover {
   background: var(--gold-2);
-  color: #17100c;
+  color: #03101f;
 }
 
 .hero-search-form button {
@@ -182,15 +184,15 @@ button:hover,
 .list-editor-shell,
 .panel {
   border: 1px solid var(--line);
-  border-radius: 28px;
-  background: rgba(29, 23, 20, 0.82);
+  border-radius: 22px;
+  background: rgba(10, 16, 36, 0.84);
   box-shadow: var(--shadow);
 }
 
 .discovery-panel {
   display: grid;
-  gap: 26px;
-  padding: 18px;
+  gap: 20px;
+  padding: 16px;
 }
 
 .filter-block {
@@ -221,16 +223,16 @@ button:hover,
 }
 
 .filter-heading h2 {
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .section-heading {
-  margin: 34px 0 16px;
+  margin: 28px 0 14px;
 }
 
 .section-heading h1,
 .list-editor-hero h1 {
-  font-size: clamp(30px, 6vw, 46px);
+  font-size: clamp(26px, 4.2vw, 38px);
 }
 
 .featured-heading {
@@ -249,9 +251,9 @@ button:hover,
 }
 
 .filter-tools {
-  display: flex;
+  display: grid;
+  grid-template-columns: 64px minmax(220px, 1fr);
   align-items: center;
-  justify-content: flex-end;
   gap: 10px;
   width: min(460px, 100%);
 }
@@ -278,27 +280,21 @@ button:hover,
 
 .chip-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  overflow-x: auto;
-  padding-bottom: 3px;
-  scrollbar-width: none;
-}
-
-.chip-row::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
 }
 
 .chip {
   display: inline-flex;
-  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 40px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  padding: 9px 15px;
-  background: rgba(255, 248, 237, 0.07);
+  padding: 8px 13px;
+  background: rgba(111, 155, 255, 0.11);
   color: var(--ink);
   font-weight: 850;
 }
@@ -310,8 +306,8 @@ button:hover,
 
 .chip:hover,
 .chip-active {
-  border-color: rgba(240, 179, 90, 0.72);
-  background: rgba(240, 179, 90, 0.18);
+  border-color: rgba(49, 183, 255, 0.72);
+  background: rgba(49, 183, 255, 0.2);
   color: #fff;
 }
 
@@ -358,8 +354,8 @@ button:hover,
 .classic-card,
 .empty-list-panel {
   border: 1px solid var(--line);
-  border-radius: 24px;
-  background: rgba(255, 248, 237, 0.07);
+  border-radius: 20px;
+  background: rgba(111, 155, 255, 0.08);
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.18);
 }
 
@@ -380,7 +376,7 @@ button:hover,
 
 .result-card h2 {
   margin: 5px 0 9px;
-  font-size: clamp(22px, 5vw, 30px);
+  font-size: clamp(20px, 3.4vw, 26px);
   line-height: 1.05;
 }
 
@@ -439,8 +435,8 @@ button:hover,
   min-height: 30px;
   border-radius: 999px;
   padding: 6px 10px;
-  background: rgba(240, 179, 90, 0.16);
-  color: #ffe0a7;
+  background: rgba(49, 183, 255, 0.16);
+  color: #ccefff;
   font-size: 13px;
   font-weight: 900;
 }
@@ -478,7 +474,7 @@ button:hover,
 
 .compact-list li,
 .ingredient-preview li {
-  color: #eadfce;
+  color: #dce8ff;
   font-size: 14px;
   overflow-wrap: anywhere;
 }
@@ -504,7 +500,7 @@ button:hover,
   aspect-ratio: 4 / 5;
   border-radius: 18px;
   object-fit: cover;
-  background: #332820;
+  background: #101b36;
 }
 
 .featured-card {
@@ -520,17 +516,13 @@ button:hover,
 
 .featured-card h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.08;
 }
 
 .featured-image {
   border-radius: 24px 24px 0 0;
   max-height: 190px;
-}
-
-.method-preview {
-  display: none;
 }
 
 .empty-state,
@@ -622,12 +614,16 @@ button:hover,
 .classic-card {
   display: grid;
   gap: 6px;
-  min-height: 98px;
+  min-height: 82px;
   color: var(--ink);
 }
 
 .classic-card strong {
-  font-size: 21px;
+  font-size: 18px;
+}
+
+.top-classics .section-heading {
+  margin-top: 8px;
 }
 
 .list-editor-hero {
@@ -697,9 +693,9 @@ button:hover,
   align-items: center;
   min-height: 50px;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 11px 12px;
-  background: rgba(255, 248, 237, 0.06);
+  background: rgba(111, 155, 255, 0.08);
   color: var(--ink);
   cursor: pointer;
 }
@@ -748,7 +744,7 @@ table {
   border: 1px solid var(--line);
   border-radius: 18px;
   border-collapse: collapse;
-  background: rgba(255, 248, 237, 0.06);
+  background: rgba(111, 155, 255, 0.08);
 }
 
 th,
@@ -785,7 +781,7 @@ th {
   overflow-wrap: anywhere;
   border-radius: 18px;
   padding: 16px;
-  background: rgba(255, 248, 237, 0.08);
+  background: rgba(111, 155, 255, 0.08);
 }
 
 .detail-image {
@@ -834,7 +830,7 @@ th {
   }
 
   .filter-tools {
-    justify-content: stretch;
+    grid-template-columns: 58px minmax(0, 1fr);
     width: 100%;
   }
 
@@ -845,8 +841,12 @@ th {
 }
 
 @media (max-width: 560px) {
+  body {
+    font-size: 15px;
+  }
+
   .brand {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .top-nav,
@@ -858,12 +858,13 @@ th {
   .top-nav a,
   nav a {
     flex: 0 0 auto;
-    padding: 8px 6px;
-    font-size: 14px;
+    min-height: 36px;
+    padding: 7px 8px;
+    font-size: 13px;
   }
 
   .page {
-    padding: 14px 12px 72px;
+    padding: 12px 10px 64px;
   }
 
   .search-hero {
@@ -871,23 +872,96 @@ th {
   }
 
   .result-card {
-    grid-template-columns: 92px minmax(0, 1fr);
-    padding: 12px;
+    grid-template-columns: 84px minmax(0, 1fr);
+    padding: 10px;
+    gap: 10px;
   }
 
   .hero-search-form input,
   .hero-search-form button {
-    min-height: 56px;
-    border-radius: 20px;
+    min-height: 50px;
+    border-radius: 18px;
   }
 
-  .filter-tools {
-    grid-template-columns: 62px minmax(0, 1fr);
+  .hero-search-form input {
+    font-size: 16px;
+    padding: 0 15px;
   }
 
   .section-heading h1,
   .list-editor-hero h1 {
-    font-size: 34px;
+    font-size: 23px;
+  }
+
+  .filter-heading h2,
+  .featured-heading h2 {
+    font-size: 18px;
+  }
+
+  .section-heading {
+    margin: 22px 0 12px;
+  }
+
+  .discovery-panel,
+  .list-editor-hero,
+  .list-editor-shell {
+    border-radius: 18px;
+    padding: 12px;
+  }
+
+  .chip-row {
+    gap: 8px;
+  }
+
+  .chip {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+
+  .chip span {
+    font-size: 12px;
+  }
+
+  .inline-select-form {
+    grid-template-columns: minmax(0, 1fr) 62px;
+  }
+
+  .filter-tools {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .filter-tools > a {
+    min-width: 54px;
+    min-height: 36px;
+    padding: 6px 9px;
+  }
+
+  .inline-select-form select,
+  .inline-select-form button {
+    min-height: 38px;
+  }
+
+  .result-card h2 {
+    font-size: 19px;
+  }
+
+  .result-card h3,
+  .eyebrow,
+  .filter-label {
+    font-size: 11px;
+  }
+
+  .compact-list li,
+  .ingredient-preview li {
+    font-size: 13px;
+  }
+
+  .source-link {
+    min-height: 34px;
+    padding: 7px 11px;
+    font-size: 14px;
   }
 
   .result-image {
@@ -899,7 +973,43 @@ th {
   }
 
   .featured-card {
-    flex-basis: 78vw;
+    flex-basis: 72vw;
+  }
+
+  .classic-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .top-classics .classic-grid {
+    display: flex;
+    gap: 9px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .top-classics .classic-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .top-classics .classic-card {
+    flex: 0 0 148px;
+    scroll-snap-align: start;
+  }
+
+  .classic-card {
+    min-height: 62px;
+    padding: 11px 12px;
+  }
+
+  .classic-card strong {
+    font-size: 15px;
+  }
+
+  .classic-card span {
+    font-size: 13px;
   }
 
   .checklist-grid {
