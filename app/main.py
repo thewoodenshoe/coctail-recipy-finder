@@ -81,6 +81,7 @@ def home(
         more_ingredients = sorted(more_ingredients, key=lambda option: option.label)
     top_creator_rows, creator_metric_title = creator_recipe_sections(db)
     classic_links = popular_classics(db)
+    popular_results = [_decorate_result(row) for row in _active_recipe_rows(db, limit=12)]
     return templates.TemplateResponse(
         "search.html",
         {
@@ -109,6 +110,7 @@ def home(
             "creator_rows": top_creator_rows,
             "creator_metric_title": creator_metric_title,
             "classic_links": classic_links,
+            "popular_results": popular_results,
         },
     )
 

@@ -17,12 +17,5 @@
         {% endfor %}
       </div>
     {% endif %}
-    {% if result.ingredients %}
-      <ul class="ingredient-preview">
-        {% for ingredient in result.ingredients[:4] %}
-          <li>{{ ingredient }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
   </div>
 </article>
