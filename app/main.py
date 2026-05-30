@@ -45,6 +45,12 @@ def home(
     list_id: int | None = None,
     db: Session = Depends(get_db),
 ):
+    list_action = request.query_params.get("list_action")
+    if list_action:
+        return _handle_ingredient_list_get_action(request, db)
+    if request.query_params.get("view") == "my-list":
+        return _ingredient_list_response(request, db, list_id)
+
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
     catalog = ingredient_catalog(db)
     selected_alcohol = _selected_values(request, "alcohol")
@@ -106,6 +112,60 @@ def home(
     )
 
 
+def _handle_ingredient_list_get_action(request: Request, db: Session) -> RedirectResponse:
+    params = request.query_params
+    action = params.get("list_action")
+    if action == "create":
+        ingredient_list = create_ingredient_list(db, params.get("name") or "New Ingredient List")
+        db.commit()
+        return RedirectResponse(f"/?view=my-list&list_id={ingredient_list.id}", status_code=303)
+    if action == "save":
+        try:
+            list_id = int(params.get("list_id") or 0)
+        except ValueError:
+            list_id = 0
+        ingredient_list = update_ingredient_list(
+            db,
+            list_id,
+            params.get("name") or "Untitled Ingredient List",
+            params.getlist("alcohol"),
+            params.getlist("ingredient"),
+        )
+        db.commit()
+        if ingredient_list is None:
+            return RedirectResponse("/?view=my-list", status_code=303)
+        return RedirectResponse(f"/?view=my-list&list_id={ingredient_list.id}", status_code=303)
+    if action == "delete":
+        try:
+            list_id = int(params.get("list_id") or 0)
+        except ValueError:
+            list_id = 0
+        if list_id:
+            delete_ingredient_list(db, list_id)
+            db.commit()
+        return RedirectResponse("/?view=my-list", status_code=303)
+    return RedirectResponse("/?view=my-list", status_code=303)
+
+
+def _ingredient_list_response(request: Request, db: Session, list_id: int | None = None):
+    saved_lists = list_ingredient_lists(db)
+    selected = selected_ingredient_list(db, list_id) or (saved_lists[0] if saved_lists else None)
+    selected_items = ingredient_list_items(db, selected.id if selected else None)
+    catalog = ingredient_catalog(db)
+    return templates.TemplateResponse(
+        "my_ingredient_list.html",
+        {
+            "request": request,
+            "ingredient_lists": saved_lists,
+            "selected_ingredient_list": selected,
+            "selected_items": selected_items,
+            "alcohol_options": catalog["alcohol"],
+            "ingredient_options": catalog["ingredient"],
+            "root_list_view": True,
+        },
+    )
+
+
 @app.head("/")
 def home_head():
     return Response(status_code=200)
@@ -137,21 +197,7 @@ def my_ingredient_list(
     list_id: int | None = None,
     db: Session = Depends(get_db),
 ):
-    saved_lists = list_ingredient_lists(db)
-    selected = selected_ingredient_list(db, list_id) or (saved_lists[0] if saved_lists else None)
-    selected_items = ingredient_list_items(db, selected.id if selected else None)
-    catalog = ingredient_catalog(db)
-    return templates.TemplateResponse(
-        "my_ingredient_list.html",
-        {
-            "request": request,
-            "ingredient_lists": saved_lists,
-            "selected_ingredient_list": selected,
-            "selected_items": selected_items,
-            "alcohol_options": catalog["alcohol"],
-            "ingredient_options": catalog["ingredient"],
-        },
-    )
+    return _ingredient_list_response(request, db, list_id)
 
 
 @app.post("/my-list/create")
