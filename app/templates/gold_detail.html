@@ -1,38 +1,79 @@
 {% extends "base.html" %}
 {% block title %}{{ recipe.drink_title or "Recipe" }} - Cocktail Finder{% endblock %}
 {% block content %}
-  <article class="panel">
-    <div class="result-meta">@{{ recipe.creator_handle }}</div>
-    <h1>{{ recipe.drink_title or "Untitled cocktail post" }}</h1>
-    {% if image_url %}
-      <img class="detail-image" src="{{ image_url }}" alt="{{ recipe.drink_title or 'Cocktail post image' }}">
-    {% endif %}
-    <p><a href="{{ recipe.source_url }}" target="_blank" rel="noopener noreferrer">Open original Instagram post</a></p>
+  <article class="detail-shell">
+    <header class="detail-hero">
+      <div class="detail-media">
+        {% if image_url %}
+          <img src="{{ image_url }}" alt="{{ recipe.drink_title or 'Cocktail post image' }}">
+        {% else %}
+          <span>{{ base_spirits[0] if base_spirits else "Cocktail" }}</span>
+        {% endif %}
+      </div>
+      <div class="detail-summary">
+        <p class="eyebrow">@{{ recipe.creator_handle }}</p>
+        <h1>{{ recipe.drink_title or "Untitled cocktail post" }}</h1>
+        {% if recipe.intro_text %}
+          <p>{{ recipe.intro_text }}</p>
+        {% endif %}
+        <div class="tags">
+          {% for spirit in base_spirits %}
+            <span>{{ spirit }}</span>
+          {% endfor %}
+          {% if recipe.glassware %}
+            <span>{{ recipe.glassware }}</span>
+          {% endif %}
+        </div>
+        <div class="detail-actions">
+          <a class="source-link" href="{{ recipe.source_url }}" target="_blank" rel="noopener noreferrer">Original recipe</a>
+          {% if creator %}
+            <a class="button-secondary" href="{{ creator.profile_url }}" target="_blank" rel="noopener noreferrer">Creator profile</a>
+          {% endif %}
+          <a class="ghost-link" href="/my-list">My Lists</a>
+        </div>
+      </div>
+    </header>
 
-    <dl class="details">
-      <dt>Base spirits</dt>
-      <dd>{{ base_spirits|join(", ") if base_spirits else "Unknown" }}</dd>
-      <dt>Ingredients</dt>
-      <dd>
+    <div class="recipe-layout">
+      <section class="recipe-panel" aria-labelledby="ingredients-heading">
+        <p class="eyebrow">Recipe</p>
+        <h2 id="ingredients-heading">Ingredients</h2>
         {% if ingredients %}
-          <ul>
+          <ul class="ingredient-list">
             {% for ingredient in ingredients %}
               <li>{{ ingredient.raw_text if ingredient.raw_text is defined else ingredient }}</li>
             {% endfor %}
           </ul>
         {% else %}
-          Unknown
+          <p class="muted">Ingredients are not available for this recipe.</p>
         {% endif %}
-      </dd>
-      <dt>Method</dt>
-      <dd>{{ recipe.method or "Unknown" }}</dd>
-      <dt>Garnish</dt>
-      <dd>{{ recipe.garnish or "Unknown" }}</dd>
-    </dl>
+      </section>
 
-    {% if recipe.intro_text %}
-      <h2>Context</h2>
-      <pre class="caption">{{ recipe.intro_text }}</pre>
-    {% endif %}
+      <section class="recipe-panel" aria-labelledby="method-heading">
+        <p class="eyebrow">Method</p>
+        <h2 id="method-heading">How to make it</h2>
+        <p>{{ recipe.method or "Method is not available for this recipe." }}</p>
+        {% if recipe.garnish %}
+          <h3>Garnish</h3>
+          <p>{{ recipe.garnish }}</p>
+        {% endif %}
+      </section>
+    </div>
   </article>
+
+  {% if related_results %}
+    <section class="content-section" aria-labelledby="related-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Related</p>
+          <h2 id="related-heading">Made with similar ingredients.</h2>
+        </div>
+      </div>
+      <div class="featured-grid">
+        {% for result in related_results %}
+          {% include "_featured_card.html" %}
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 {% endblock %}

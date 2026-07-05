@@ -1,73 +1,87 @@
 # Frontend
 
-## Design Goal
+## Product Direction
 
-The frontend should be simple, dense, and useful. This is an internal workflow tool for indexing and finding cocktail posts, not a landing page.
+The frontend is a server-rendered cocktail discovery experience. It should feel like a polished cocktail magazine mixed with a practical search app, not an admin table or raw recipe index.
 
-Use server-rendered pages first. Avoid a separate JavaScript frontend until there is a clear interaction need.
+Use the existing FastAPI, Jinja, and CSS stack unless a dependency clearly improves a real interaction. Keep routes and backend contracts stable.
 
-## Pages
+## Design System
+
+- Background: deep charcoal and near-black with subtle warmth.
+- Text: warm off-white for primary text, muted warm gray for secondary text.
+- Accents: restrained gold, amber, berry, citrus, and a small amount of cool blue for controls.
+- Typography: serif display headings plus a clean system sans for body and controls.
+- Cards: rounded, image-forward, compact, and editorial. Avoid dense tables and repeated oversized form blocks.
+- Motion: subtle hover/tap feedback only, and respect reduced-motion preferences.
+
+## Primary Navigation
+
+- Discover
+- Search
+- Popular
+- Creators
+- My Lists
+
+Do not add a permanent random tab. Use the hero/search "Surprise me" action and the Discover "Cocktail of the Day" module instead.
+
+## Discover Page
+
+Purpose: make the product immediately understandable and visually appealing.
+
+Expected elements:
+
+- Supplied Cocktail Finder banner image as the hero.
+- Clear headline and concise value proposition.
+- Main search bar in the hero.
+- Surprise Me action.
+- Cocktail of the Day using deterministic daily selection.
+- Saved-list matching module.
+- Popular Classics.
+- Compact browse/filter controls.
+- Popular cocktail cards.
+- Featured creator cards.
+
+Avoid showing raw methods, sync fields, quality scores, or admin data on homepage cards.
 
 ## Search Page
 
-Purpose: find indexed cocktail posts.
+Purpose: find indexed cocktail posts by drink name, ingredient, spirit, bottle, or creator.
 
 Expected elements:
 
-- Search input.
-- Optional creator filter.
-- Result count.
-- Search results list.
-- Each result shows title when available, creator, likely ingredients, excerpt, and original Instagram link.
-- Link to post detail page.
+- Dominant search input.
+- Filter chips for real database-backed alcohol and ingredients.
+- More alcohol/ingredient selectors.
+- Active filter summary with Clear all.
+- Compact result cards.
+- Helpful empty states.
 
-## Import Post Page
+## My Lists
 
-Purpose: manually add a post to the index.
-
-Expected fields:
-
-- Creator handle.
-- Instagram post URL.
-- Pasted caption or visible post text.
-- Optional notes.
-
-Expected actions:
-
-- Save post.
-- Extract recipe fields.
-- Add content to search index.
-
-## Creator List Page
-
-Purpose: manage and inspect creators.
+Purpose: manage shared ingredient lists backed by the database.
 
 Expected elements:
 
-- Creator handle list.
-- Post count per creator.
-- Link to creator-specific posts.
-- Basic add-creator flow, either here or embedded in import.
+- Saved list cards with item counts.
+- Create, rename, delete, and save actions.
+- Alcohol and ingredient checklist sections generated from recipe data.
+- Clear action to find matching cocktails.
 
-## Post Detail Page
+This is intentionally not an authentication or ownership feature.
 
-Purpose: inspect one indexed post.
+## Popular And Creators
+
+Popular should show top cocktails grouped by creator without horizontal swimlanes. Creator pages should focus on creator cards, recipe counts, and source profile links.
+
+## Cocktail Detail
+
+Purpose: present a recipe cleanly and link back to the source.
 
 Expected elements:
 
-- Creator.
-- Original Instagram URL.
-- Raw pasted text.
-- Extracted drink title.
-- Extracted ingredients.
-- Extracted instructions or method when available.
-- Searchable text fields.
-- Created/updated timestamps.
-
-## UI Rules
-
-- Keep navigation obvious.
-- Optimize for quick data entry and search.
-- Do not add decorative complexity.
-- Do not hide original source text.
-- Make failed or uncertain extraction visible.
+- Title, creator, image or graceful visual fallback.
+- Base spirits and metadata where available.
+- Ingredients and method in readable sections.
+- Separate original recipe link and creator profile link.
+- Related cocktails when data supports it.

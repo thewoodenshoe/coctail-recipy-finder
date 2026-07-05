@@ -4,15 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Cocktail Recipe Finder{% endblock %}</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260530c">
+    <link rel="preload" as="image" href="/static/cocktail-finder.jpg">
+    <link rel="stylesheet" href="/static/styles.css?v=20260705a">
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="/">Cocktail Finder</a>
-      <nav class="top-nav">
-        <a href="/">Search</a>
-        <a href="/?view=top">Popular</a>
+      <a class="brand" href="/" aria-label="Cocktail Finder home">
+        <span class="brand-mark" aria-hidden="true">CF</span>
+        <span>Cocktail Finder</span>
+      </a>
+      <nav class="top-nav" aria-label="Primary navigation">
+        <a href="/">Discover</a>
+        <a href="/search">Search</a>
+        <a href="/popular">Popular</a>
         <a href="/creators">Creators</a>
+        <a href="/my-list">My Lists</a>
       </nav>
     </header>
     <main class="page">

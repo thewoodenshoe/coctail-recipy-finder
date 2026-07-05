@@ -1,28 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Creators - Cocktail Finder{% endblock %}
 {% block content %}
-  <section class="creator-directory">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">Creators</p>
-        <h1>Browse by bartender</h1>
-      </div>
-    </div>
-    <div class="creator-grid">
-      {% for creator in creators %}
-        {% set stats = creator_stats.get(creator.handle, {}) %}
-        <article class="creator-summary">
-          <p class="eyebrow">@{{ creator.handle }}</p>
-          <h2>{{ creator.display_name or creator.handle }}</h2>
-          <div class="creator-stats">
-            <span>{{ stats.get("active_recipes", 0) }} recipes</span>
-          </div>
-          <div class="creator-actions">
-            <a class="source-link" href="/?creator={{ creator.handle }}">View recipes</a>
-            <a class="source-link secondary-link" href="{{ creator.profile_url }}" target="_blank" rel="noopener noreferrer">Instagram</a>
-          </div>
-        </article>
-      {% endfor %}
-    </div>
+  <section class="page-hero compact">
+    <p class="eyebrow">Creators</p>
+    <h1>Browse by bartender.</h1>
+    <p>Search recipes by creator and open the original social profiles when you want the source.</p>
+  </section>
+
+  <section class="creator-card-grid" aria-label="Cocktail creators">
+    {% for creator in creators %}
+      {% set stats = creator_stats.get(creator.handle, {}) %}
+      <article class="creator-summary">
+        <p class="eyebrow">@{{ creator.handle }}</p>
+        <h2>{{ creator.display_name or creator.handle }}</h2>
+        <p>{{ stats.get("active_recipes", 0) }} recipes</p>
+        <div class="creator-actions">
+          <a class="source-link" href="/search?creator={{ creator.handle }}">View recipes</a>
+          <a class="button-secondary" href="{{ creator.profile_url }}" target="_blank" rel="noopener noreferrer">Instagram</a>
+        </div>
+      </article>
+    {% endfor %}
   </section>
 {% endblock %}

@@ -1,32 +1,28 @@
 {% extends "base.html" %}
 {% block title %}Popular Cocktails - Cocktail Finder{% endblock %}
 {% block content %}
-  <section class="popular-page">
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">Popular</p>
-        <h1>Popular cocktails by creator</h1>
-      </div>
-    </div>
-    <p class="page-intro">{{ popular_metric_note }}</p>
-
-    <div class="popular-creator-stack">
-      {% for row in creator_rows %}
-        <section class="popular-creator-block">
-          <div class="featured-heading">
-            <div>
-              <p class="eyebrow">@{{ row.creator.handle }}</p>
-              <h2>{{ row.creator.display_name or row.creator.handle }}</h2>
-            </div>
-            <a class="button-secondary compact-action" href="/?creator={{ row.creator.handle }}">Search creator</a>
-          </div>
-          <div class="popular-recipe-grid">
-            {% for result in row.recipes[:10] %}
-              {% include "_featured_card.html" %}
-            {% endfor %}
-          </div>
-        </section>
-      {% endfor %}
-    </div>
+  <section class="page-hero compact">
+    <p class="eyebrow">Popular</p>
+    <h1>Top cocktails by creator.</h1>
+    <p>{{ popular_metric_note }}</p>
   </section>
+
+  <div class="popular-creator-stack">
+    {% for row in creator_rows %}
+      <section class="popular-creator-block" aria-labelledby="popular-{{ row.creator.handle }}">
+        <div class="featured-heading">
+          <div>
+            <p class="eyebrow">@{{ row.creator.handle }}</p>
+            <h2 id="popular-{{ row.creator.handle }}">{{ row.creator.display_name or row.creator.handle }}</h2>
+          </div>
+          <a class="ghost-link" href="/search?creator={{ row.creator.handle }}">Search creator</a>
+        </div>
+        <div class="featured-grid creator-feature-grid">
+          {% for result in row.recipes[:10] %}
+            {% include "_featured_card.html" %}
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
 {% endblock %}

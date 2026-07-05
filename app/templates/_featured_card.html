@@ -1,9 +1,11 @@
-<article class="featured-card {% if not result.image_url %}featured-card-no-image{% endif %}">
-  {% if result.image_url %}
-    <a href="{{ result.detail_path }}" class="featured-image-link">
-      <img class="featured-image" src="{{ result.image_url }}" alt="{{ result.drink_name or 'Cocktail post image' }}">
-    </a>
-  {% endif %}
+<article class="featured-card">
+  <a href="{{ result.detail_path }}" class="featured-media" aria-label="View {{ result.drink_name or 'cocktail recipe' }}">
+    {% if result.image_url %}
+      <img src="{{ result.image_url }}" alt="{{ result.drink_name or 'Cocktail post image' }}">
+    {% else %}
+      <span>{{ (result.base_spirits[0] if result.base_spirits else "Cocktail") }}</span>
+    {% endif %}
+  </a>
   <div class="featured-card-body">
     <div class="result-meta">
       <span>@{{ result.creator_handle }}</span>
@@ -12,7 +14,7 @@
     <h3><a href="{{ result.detail_path }}">{{ result.drink_name or "Untitled cocktail post" }}</a></h3>
     {% if result.base_spirits %}
       <div class="tags">
-        {% for spirit in result.base_spirits[:3] %}
+        {% for spirit in result.base_spirits[:2] %}
           <span>{{ spirit }}</span>
         {% endfor %}
       </div>

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import random
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -53,7 +55,36 @@ def home(
         return _popular_response(request, db)
     if request.query_params.get("view") == "my-list":
         return _ingredient_list_response(request, db, parsed_list_id)
+    return _search_response(request, db, q, creator, parsed_list_id, page_mode="discover")
 
+
+@app.get("/search")
+def search_page(
+    request: Request,
+    q: str = "",
+    creator: str = "",
+    list_id: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return _search_response(request, db, q, creator, _optional_int(list_id), page_mode="search")
+
+
+@app.get("/surprise")
+def surprise_me(db: Session = Depends(get_db)):
+    recipe = random_recipe(db)
+    if recipe is None:
+        return RedirectResponse("/", status_code=303)
+    return RedirectResponse(recipe["detail_path"], status_code=303)
+
+
+def _search_response(
+    request: Request,
+    db: Session,
+    q: str,
+    creator: str,
+    parsed_list_id: int | None,
+    page_mode: str,
+):
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
     catalog = ingredient_catalog(db)
     selected_alcohol = _selected_values(request, "alcohol")
@@ -106,6 +137,13 @@ def home(
             "ingredient_lists": saved_lists,
             "selected_ingredient_list": current_list,
             "ingredient_list_matches": ingredient_list_matches,
+            "ingredient_list_counts": _ingredient_list_counts(db),
+            "page_mode": page_mode,
+            "cocktail_of_day": cocktail_of_the_day(db),
+            "popular_recipes": popular_recipe_results(db, limit=8),
+            "popular_classics": popular_classics(db),
+            "featured_creators": featured_creators(db, limit=5),
+            "search_suggestions": search_suggestions(db),
         },
     )
 
@@ -159,6 +197,7 @@ def _ingredient_list_response(request: Request, db: Session, list_id: int | None
             "selected_items": selected_items,
             "alcohol_options": catalog["alcohol"],
             "ingredient_options": catalog["ingredient"],
+            "ingredient_list_counts": _ingredient_list_counts(db),
             "root_list_view": True,
         },
     )
@@ -257,6 +296,7 @@ def gold_detail(gold_id: int, request: Request, db: Session = Depends(get_db)):
     if recipe is None:
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     raw_post = db.scalar(select(RawPost).where(RawPost.id == recipe.raw_post_id))
+    creator = db.scalar(select(Creator).where(Creator.handle == recipe.creator_handle))
     ingredients = []
     base_spirits = []
     try:
@@ -275,6 +315,8 @@ def gold_detail(gold_id: int, request: Request, db: Session = Depends(get_db)):
             "image_url": _media_url(raw_post.local_image_path if raw_post else None),
             "ingredients": ingredients,
             "base_spirits": base_spirits,
+            "creator": creator,
+            "related_results": related_recipes(db, recipe, limit=6),
         },
     )
 
@@ -370,6 +412,117 @@ def ranked_recipes_for_ingredient_list(db: Session, list_id: int, limit: int = 1
     return [row for *_rest, row in ranked[:limit]]
 
 
+def cocktail_of_the_day(db: Session, day: date | None = None) -> dict | None:
+    """Return a stable active recipe for a calendar day without assuming contiguous IDs."""
+    active_count = _active_recipe_count(db)
+    if active_count == 0:
+        return None
+    current_day = day or date.today()
+    day_key = current_day.isoformat()
+    offset = sum((index + 1) * ord(char) for index, char in enumerate(day_key)) % active_count
+    return _active_recipe_by_offset(db, offset)
+
+
+def random_recipe(db: Session, offset: int | None = None) -> dict | None:
+    active_count = _active_recipe_count(db)
+    if active_count == 0:
+        return None
+    selected_offset = offset if offset is not None else random.SystemRandom().randrange(active_count)
+    return _active_recipe_by_offset(db, selected_offset % active_count)
+
+
+def popular_recipe_results(db: Session, limit: int = 8) -> list[dict]:
+    return [_decorate_result(row) for row in _active_recipe_rows(db, limit=limit)]
+
+
+def featured_creators(db: Session, limit: int = 5) -> list[dict[str, object]]:
+    stats = _creator_stats(db)
+    creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
+    ranked = sorted(
+        creators,
+        key=lambda creator: (
+            stats.get(creator.handle, {}).get("active_recipes", 0),
+            creator.display_name or creator.handle,
+        ),
+        reverse=True,
+    )
+    cards: list[dict[str, object]] = []
+    for creator in ranked[:limit]:
+        top_recipe_rows = _active_recipe_rows(db, creator_handle=creator.handle, limit=1)
+        cards.append(
+            {
+                "creator": creator,
+                "active_recipes": stats.get(creator.handle, {}).get("active_recipes", 0),
+                "top_recipe": _decorate_result(top_recipe_rows[0]) if top_recipe_rows else None,
+            }
+        )
+    return cards
+
+
+def related_recipes(db: Session, recipe: GoldRecipe, limit: int = 6) -> list[dict]:
+    try:
+        base_spirits = {str(item).lower() for item in json.loads(recipe.base_spirits_json or "[]")}
+    except json.JSONDecodeError:
+        base_spirits = set()
+    try:
+        ingredients = json.loads(recipe.ingredients_json or "[]")
+    except json.JSONDecodeError:
+        ingredients = []
+    ingredient_labels = {
+        str(
+            ingredient.get("alcohol_family")
+            or ingredient.get("label")
+            or ingredient.get("normalized_name")
+            or ""
+        ).lower()
+        for ingredient in ingredients
+        if isinstance(ingredient, dict)
+    }
+    target_labels = {item for item in base_spirits | ingredient_labels if item}
+    if not target_labels:
+        return []
+    ranked: list[tuple[int, float, dict]] = []
+    for row in [_decorate_result(row) for row in _active_recipe_rows(db)]:
+        if row["id"] == recipe.id:
+            continue
+        labels = row["alcohol_labels"] | row["ingredient_labels"]
+        shared = len(labels & target_labels)
+        if shared == 0:
+            continue
+        ranked.append((shared, _popularity_score(row), row))
+    ranked.sort(key=lambda item: (item[0], item[1], item[2].get("quality_score") or 0), reverse=True)
+    return [row for *_score, row in ranked[:limit]]
+
+
+def search_suggestions(db: Session, limit: int = 80) -> list[str]:
+    suggestions: list[str] = []
+    rows = db.execute(
+        text(
+            """
+            SELECT drink_title
+            FROM gold_recipes
+            WHERE status = 'active' AND drink_title IS NOT NULL AND trim(drink_title) != ''
+            ORDER BY COALESCE(view_count, like_count, 0) DESC, COALESCE(quality_score, 0) DESC, id DESC
+            LIMIT :limit
+            """
+        ),
+        {"limit": limit},
+    ).scalars().all()
+    for value in rows:
+        clean_value = " ".join(str(value).split())
+        if clean_value and clean_value not in suggestions:
+            suggestions.append(clean_value)
+    creators = db.scalars(select(Creator.handle).order_by(Creator.handle)).all()
+    for creator in creators:
+        label = f"@{creator}"
+        if label not in suggestions:
+            suggestions.append(label)
+    for option in ingredient_catalog(db)["alcohol"][:20]:
+        if option.label not in suggestions:
+            suggestions.append(option.label)
+    return suggestions[:limit]
+
+
 def creator_recipe_sections(db: Session, per_creator: int = 8) -> tuple[list[dict], str]:
     metric_title = _creator_metric_title(db)
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
@@ -437,6 +590,30 @@ def _active_recipe_rows(db: Session, creator_handle: str | None = None, limit: i
         params,
     ).mappings().all()
     return [dict(row) for row in rows]
+
+
+def _active_recipe_count(db: Session) -> int:
+    return int(db.scalar(select(func.count(GoldRecipe.id)).where(GoldRecipe.status == "active")) or 0)
+
+
+def _active_recipe_by_offset(db: Session, offset: int) -> dict | None:
+    row = db.execute(
+        text(
+            """
+            SELECT
+                gold_recipes.*,
+                raw_posts.local_image_path,
+                COALESCE(gold_recipes.view_count, gold_recipes.like_count, 0) AS popularity_count
+            FROM gold_recipes
+            JOIN raw_posts ON raw_posts.id = gold_recipes.raw_post_id
+            WHERE gold_recipes.status = 'active'
+            ORDER BY gold_recipes.id
+            LIMIT 1 OFFSET :offset
+            """
+        ),
+        {"offset": max(offset, 0)},
+    ).mappings().first()
+    return _decorate_result(dict(row)) if row else None
 
 
 def _search_score(row: dict, tokens: list[str], raw_query: str) -> float:
@@ -594,7 +771,7 @@ def _toggle_query_url(request: Request, key: str, value: str) -> str:
         current = [item for item in current if item != (key, value)]
     else:
         current.append((key, value))
-    return _query_path(current)
+    return _query_path(current, _request_query_path(request))
 
 
 def _remove_query_url(request: Request, key: str, value: str) -> str:
@@ -603,19 +780,23 @@ def _remove_query_url(request: Request, key: str, value: str) -> str:
         for item_key, item_value in request.query_params.multi_items()
         if not (item_key == key and item_value == value) and item_key != "base"
     ]
-    return _query_path(current)
+    return _query_path(current, _request_query_path(request))
 
 
 def _toggle_sort_url(request: Request, key: str) -> str:
     current = [(item_key, item_value) for item_key, item_value in request.query_params.multi_items() if item_key != key]
     if request.query_params.get(key) != "alpha":
         current.append((key, "alpha"))
-    return _query_path(current)
+    return _query_path(current, _request_query_path(request))
 
 
-def _query_path(items: list[tuple[str, str]]) -> str:
+def _request_query_path(request: Request) -> str:
+    return "/search" if request.url.path == "/search" else "/"
+
+
+def _query_path(items: list[tuple[str, str]], path: str = "/") -> str:
     cleaned = [(key, value) for key, value in items if value]
-    return "/?" + urlencode(cleaned, doseq=True) if cleaned else "/"
+    return path + "?" + urlencode(cleaned, doseq=True) if cleaned else path
 
 
 def _creator_stats(db: Session) -> dict[str, dict[str, int]]:
@@ -640,6 +821,19 @@ def _creator_stats(db: Session) -> dict[str, dict[str, int]]:
         elif status == "not_recipe":
             stats[handle]["not_recipes"] = int(count or 0)
     return stats
+
+
+def _ingredient_list_counts(db: Session) -> dict[int, int]:
+    rows = db.execute(
+        text(
+            """
+            SELECT list_id, count(*) AS item_count
+            FROM ingredient_list_items
+            GROUP BY list_id
+            """
+        )
+    ).mappings().all()
+    return {int(row["list_id"]): int(row["item_count"] or 0) for row in rows}
 
 
 def _display_title(row: dict, ingredients: list[str]) -> str:
