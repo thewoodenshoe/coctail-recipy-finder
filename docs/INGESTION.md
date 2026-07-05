@@ -43,7 +43,15 @@ Search should return the original Instagram URL with every result.
 
 The active production path is manual or creator-provided text import. The app stores source text and links, then transforms that source material into searchable recipe records.
 
-Any future automated provider must be reviewed before implementation and must use an approved API, creator-provided export, or another clearly permitted data source. Do not add browser-session capture or platform-control workarounds to this repo.
+Owner-authorized manual Chrome backfills are also approved for occasional use.
+In that flow, the owner is already logged in locally, explicitly initiates the
+run, and the collector captures only post URLs plus visible caption/source text.
+The output must still be imported through the existing JSONL/raw-post/gold
+pipeline.
+
+Any future unattended automated provider must be reviewed before implementation
+and must use an approved API, creator-provided export, or another clearly
+permitted data source.
 
 ## Later Ingestion Options
 
@@ -53,6 +61,7 @@ Later options can include:
 - Official APIs where practical.
 - Limited public metadata import.
 - Semi-manual tools that reduce copy/paste.
+- Owner-approved manual Chrome collection for occasional backfills.
 
 ## Current Implementation
 
@@ -69,10 +78,18 @@ python -m app.cli import-jsonl --creator HANDLE --jsonl-file FILE --replace-crea
 
 Unauthenticated public Instagram collection remains conservative. Bulk imports should use approved creator-provided or otherwise authorized captured source text.
 
+Manual Chrome backfill can produce the same JSONL format:
+
+```json
+{"creator_handle":"thirstywhale_","source_url":"https://www.instagram.com/p/POST_ID/","caption_text":"caption text"}
+```
+
 ## Explicit Non-Goals
 
 - Do not download videos.
 - Do not mirror Instagram profiles.
-- Do not automate around platform access controls.
+- Do not run unattended browser scraping.
 - Do not store account sessions, secrets, or private account material in this repo.
+- Do not store Chrome cookies, account credentials, or private session material
+  in this repo.
 - Do not add non-approved collection behavior.

@@ -77,7 +77,7 @@ Consequences:
 
 ## 0008 - Remove Browser-Based Collection From Active Code
 
-Status: Accepted
+Status: Superseded by 0009
 
 Decision: Remove the active browser-based ingestion commands, provider, related configuration, automation dependency, and related deployment instructions.
 
@@ -88,6 +88,27 @@ Consequences:
 - Manual caption/source-text import remains the supported working ingestion path.
 - `sync-creators` can still track configured creators and status through the stub provider.
 - Future ingestion must use an approved API, creator-provided export, or another explicitly reviewed data source.
+
+## 0009 - Allow Owner-Initiated Manual Chrome Backfills
+
+Status: Accepted
+
+Decision: Allow occasional owner-initiated manual Chrome backfills using the
+owner's existing local authenticated Chrome session.
+
+Reasoning: The product owner has permission to view the selected creators'
+content and wants infrequent manual refreshes, not a background scraper. This
+keeps ingestion practical while avoiding stored credentials, unattended browser
+automation, or daemonized collection.
+
+Consequences:
+
+- Manual Chrome runs may capture post URL and visible caption/source text.
+- Collection stops when already-indexed posts are reached.
+- Captured rows are imported through the existing JSONL/raw-post/gold pipeline.
+- The repo must not store Chrome cookies, passwords, account sessions, or private
+  session material.
+- Scheduled sync remains conservative and should not use browser sessions.
 
 ## 0006 - Keep Direct-Port MVP On 8000, Not 8080
 
