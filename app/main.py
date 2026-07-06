@@ -23,6 +23,7 @@ from app.ingredient_lists import (
     ingredient_list_items,
     list_ingredient_lists,
     selected_ingredient_list,
+    specific_alcohol_labels,
     update_ingredient_list,
 )
 from app.models import Creator, GoldRecipe, RawPost
@@ -335,7 +336,11 @@ def _decorate_result(row: dict) -> dict:
             display_ingredients.append(ingredient.get("raw_text") or ingredient.get("name") or "")
             label = ingredient.get("alcohol_family") or ingredient.get("label") or ingredient.get("normalized_name")
             if label and ingredient.get("category") == "alcohol":
-                alcohol_labels.add(str(label).lower())
+                specific_labels = specific_alcohol_labels(ingredient)
+                if specific_labels:
+                    alcohol_labels.update(specific_labels)
+                else:
+                    alcohol_labels.add(str(label).lower())
             elif label and ingredient.get("category") == "ingredient":
                 ingredient_labels.add(str(label).lower())
         else:

@@ -12,6 +12,67 @@ from sqlalchemy.orm import Session
 from app.models import GoldRecipe, IngredientList, IngredientListItem
 
 
+SEEDED_ALCOHOL_OPTIONS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("absinthe", "Absinthe", ("absinthe",)),
+    ("allspice dram", "Allspice Dram", ("allspice dram", "pimento dram")),
+    ("amaretto", "Amaretto", ("amaretto",)),
+    ("amaro", "Amaro", ("amaro",)),
+    ("amaro averna", "Amaro Averna", ("amaro averna", "averna")),
+    ("amaro montenegro", "Amaro Montenegro", ("amaro montenegro", "montenegro")),
+    ("amaro nonino", "Amaro Nonino", ("amaro nonino", "nonino")),
+    ("aperol", "Aperol", ("aperol",)),
+    ("apricot liqueur", "Apricot Liqueur", ("apricot liqueur", "apricot brandy")),
+    ("aquavit", "Aquavit", ("aquavit",)),
+    ("benedictine", "Benedictine", ("benedictine")),
+    ("blue curacao", "Blue Curacao", ("blue curacao")),
+    ("brandy", "Brandy", ("brandy",)),
+    ("campari", "Campari", ("campari",)),
+    ("chambord", "Chambord", ("chambord", "raspberry liqueur")),
+    ("chartreuse", "Chartreuse", ("chartreuse", "charteuse")),
+    ("cherry heering", "Cherry Heering", ("cherry heering",)),
+    ("coconut liqueur", "Coconut Liqueur", ("coconut liqueur", "malibu")),
+    ("coffee liqueur", "Coffee Liqueur", ("coffee liqueur", "kahlua", "mr black")),
+    ("cointreau", "Cointreau", ("cointreau",)),
+    ("cognac", "Cognac", ("cognac",)),
+    ("creme de banane", "Banana Liqueur", ("banana liqueur", "creme de banane", "banane du bresil", "banane du brasil")),
+    ("creme de cacao", "Creme De Cacao", ("creme de cacao", "cocoa liqueur")),
+    ("creme de cassis", "Creme De Cassis", ("creme de cassis", "cassis")),
+    ("creme de menthe", "Creme De Menthe", ("creme de menthe")),
+    ("creme de violette", "Creme De Violette", ("creme de violette")),
+    ("curacao", "Curacao", ("curacao")),
+    ("cynar", "Cynar", ("cynar",)),
+    ("drambuie", "Drambuie", ("drambuie",)),
+    ("falernum", "Falernum", ("falernum",)),
+    ("fernet branca", "Fernet-Branca", ("fernet branca", "fernet-branca", "fernet")),
+    ("frangelico", "Frangelico", ("frangelico", "hazelnut liqueur")),
+    ("ginger liqueur", "Ginger Liqueur", ("ginger liqueur", "domaine de canton")),
+    ("grand marnier", "Grand Marnier", ("grand marnier",)),
+    ("green chartreuse", "Green Chartreuse", ("green chartreuse",)),
+    ("italicus", "Italicus", ("italicus", "bergamot liqueur")),
+    ("jagermeister", "Jagermeister", ("jagermeister", "jager")),
+    ("licor 43", "Licor 43", ("licor 43",)),
+    ("lillet blanc", "Lillet Blanc", ("lillet blanc", "lillet")),
+    ("luxardo bitter bianco", "Luxardo Bitter Bianco", ("luxardo bitter bianco", "bitter bianco")),
+    ("maraschino liqueur", "Maraschino Liqueur", ("maraschino liqueur", "maraschino", "luxardo maraschino")),
+    ("orange liqueur", "Orange Liqueur", ("orange liqueur",)),
+    ("pastis", "Pastis", ("pastis", "pernod")),
+    ("peach liqueur", "Peach Liqueur", ("peach liqueur", "peach schnapps")),
+    ("pisco", "Pisco", ("pisco",)),
+    ("pimms", "Pimm's", ("pimms", "pimm s", "pimm's")),
+    ("rye", "Rye", ("rye", "rye whiskey", "rye whisky")),
+    ("sloe gin", "Sloe Gin", ("sloe gin",)),
+    ("st germain", "St Germain", ("st germain", "st-germain", "stgermaindrinks", "elderflower liqueur")),
+    ("sambuca", "Sambuca", ("sambuca",)),
+    ("scotch", "Scotch", ("scotch",)),
+    ("sherry", "Sherry", ("sherry", "fino", "oloroso", "amontillado", "manzanilla")),
+    ("suze", "Suze", ("suze",)),
+    ("sweet vermouth", "Sweet Vermouth", ("sweet vermouth", "vermouth rosso", "carpano antica", "antica formula")),
+    ("triple sec", "Triple Sec", ("triple sec",)),
+    ("vermouth", "Vermouth", ("vermouth",)),
+    ("yellow chartreuse", "Yellow Chartreuse", ("yellow chartreuse",)),
+)
+
+
 @dataclass(frozen=True)
 class IngredientOption:
     name: str
@@ -97,11 +158,17 @@ def ingredient_catalog(session: Session) -> dict[str, list[IngredientOption]]:
                 continue
             item_name = str(label).strip().lower()
             if category == "alcohol":
-                recipe_alcohol.add(item_name)
+                specific_labels = specific_alcohol_labels(ingredient)
+                if specific_labels:
+                    recipe_alcohol.update(specific_labels)
+                else:
+                    recipe_alcohol.add(item_name)
             elif category == "ingredient":
                 recipe_ingredients.add(item_name)
         alcohol_counts.update(recipe_alcohol)
         ingredient_counts.update(recipe_ingredients)
+    for name, _label, _patterns in SEEDED_ALCOHOL_OPTIONS:
+        alcohol_counts.setdefault(name, 0)
 
     return {
         "alcohol": _options_from_counts(alcohol_counts, "alcohol"),
@@ -127,7 +194,22 @@ def display_item_name(item_name: str) -> str:
         "soda water": "Soda Water",
         "non-alcoholic aperitif": "Non-Alcoholic Aperitif",
     }
+    overrides.update({name: label for name, label, _patterns in SEEDED_ALCOHOL_OPTIONS})
     return overrides.get(item_name, item_name.replace("-", " ").title())
+
+
+def specific_alcohol_labels(ingredient: dict) -> set[str]:
+    searchable = _searchable_text(
+        " ".join(
+            str(ingredient.get(key) or "")
+            for key in ("raw_text", "name", "normalized_name", "label", "alcohol_family")
+        )
+    )
+    labels = set()
+    for name, _label, patterns in SEEDED_ALCOHOL_OPTIONS:
+        if any(_phrase_in_text(_searchable_text(pattern), searchable) for pattern in patterns):
+            labels.add(name)
+    return labels
 
 
 def _options_from_counts(counts: Counter[str], item_type: str) -> list[IngredientOption]:
@@ -145,6 +227,24 @@ def _clean_list_name(name: str) -> str:
 
 def _clean_item_name(name: str) -> str:
     return " ".join((name or "").strip().lower().split())[:255]
+
+
+def _searchable_text(value: str) -> str:
+    return " ".join(
+        (value or "")
+        .lower()
+        .replace("&", " and ")
+        .replace("_", " ")
+        .replace("-", " ")
+        .replace("'", " ")
+        .split()
+    )
+
+
+def _phrase_in_text(phrase: str, searchable: str) -> bool:
+    if not phrase:
+        return False
+    return f" {phrase} " in f" {searchable} "
 
 
 def _json_value(value: str | None, fallback):

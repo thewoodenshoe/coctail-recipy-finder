@@ -191,9 +191,9 @@
             {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
             {% for item in selected_alcohol %}<input type="hidden" name="alcohol" value="{{ item }}">{% endfor %}
             {% for item in selected_ingredients %}<input type="hidden" name="ingredient" value="{{ item }}">{% endfor %}
-            <label class="sr-only" for="more-alcohol">More alcohol</label>
+            <label class="sr-only" for="more-alcohol">More liquor</label>
             <select id="more-alcohol" name="alcohol">
-              <option value="">More alcohol</option>
+              <option value="">More liquor</option>
               {% for item in more_alcohol %}
                 <option value="{{ item.name }}">{{ item.label }} ({{ item.count }})</option>
               {% endfor %}

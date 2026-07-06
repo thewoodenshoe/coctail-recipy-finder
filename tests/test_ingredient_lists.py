@@ -24,6 +24,16 @@ def test_ingredient_catalog_uses_recipe_data(db_session):
     assert any(item.name == "lime juice" for item in catalog["ingredient"])
 
 
+def test_ingredient_catalog_includes_seeded_more_liquor_options(db_session):
+    catalog = ingredient_catalog(db_session)
+    alcohol_names = {item.name for item in catalog["alcohol"]}
+
+    assert "st germain" in alcohol_names
+    assert "creme de banane" in alcohol_names
+    assert "maraschino liqueur" in alcohol_names
+    assert "coffee liqueur" in alcohol_names
+
+
 def test_saved_ingredient_list_persists_items(db_session):
     ingredient_list = create_ingredient_list(db_session, "Stewart's Ingredients")
     update_ingredient_list(db_session, ingredient_list.id, "Stewart's Ingredients", ["vodka"], ["apple", "lime juice"])
@@ -49,6 +59,40 @@ def test_ingredient_list_ranking_marks_missing_items(db_session):
     matches = ranked_recipes_for_ingredient_list(db_session, ingredient_list.id)
 
     assert matches[0]["drink_name"] == "Apple Vodka Smash"
+    assert matches[0]["availability_status"] == "Can make"
+
+
+def test_specific_liqueur_in_saved_list_matches_recipe(db_session):
+    import_caption_to_gold(
+        db_session,
+        "thirstywhale_",
+        "https://www.instagram.com/p/st-germain/",
+        "Elderflower Highball\n2 oz gin\n.5 oz St Germain\n.75 oz lemon juice\nShake hard.",
+    )
+    ingredient_list = create_ingredient_list(db_session, "Liqueur Shelf")
+    update_ingredient_list(db_session, ingredient_list.id, "Liqueur Shelf", ["gin", "st germain"], ["lemon juice"])
+    db_session.commit()
+
+    matches = ranked_recipes_for_ingredient_list(db_session, ingredient_list.id)
+
+    assert matches[0]["drink_name"] == "Elderflower Highball"
+    assert matches[0]["availability_status"] == "Can make"
+
+
+def test_banana_liqueur_in_saved_list_matches_recipe(db_session):
+    import_caption_to_gold(
+        db_session,
+        "highproofpreacher",
+        "https://www.instagram.com/p/banana/",
+        "Banana Split\n1 oz rum\n.5 oz Banana Liqueur\n.5 oz lime juice\nShake hard.",
+    )
+    ingredient_list = create_ingredient_list(db_session, "Tiki Shelf")
+    update_ingredient_list(db_session, ingredient_list.id, "Tiki Shelf", ["rum", "creme de banane"], ["lime juice"])
+    db_session.commit()
+
+    matches = ranked_recipes_for_ingredient_list(db_session, ingredient_list.id)
+
+    assert matches[0]["drink_name"] == "Banana Split"
     assert matches[0]["availability_status"] == "Can make"
 
 
