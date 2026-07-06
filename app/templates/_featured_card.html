@@ -1,4 +1,4 @@
-<article class="featured-card">
+<article class="featured-card {% if not result.image_url %}featured-card-fallback{% endif %}">
   <a href="{{ result.detail_path }}" class="featured-media" aria-label="View {{ result.drink_name or 'cocktail recipe' }}">
     {% if result.image_url %}
       <img src="{{ result.image_url }}" alt="{{ result.drink_name or 'Cocktail post image' }}">

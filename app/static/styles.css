@@ -1112,29 +1112,46 @@ button:hover,
 
 @media (max-width: 700px) {
   .site-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    padding: 11px 14px;
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+    padding: 7px 10px;
+  }
+
+  .brand {
+    gap: 0;
+    flex: 0 0 auto;
+  }
+
+  .brand span:not(.brand-mark) {
+    display: none;
+  }
+
+  .brand-mark {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
   }
 
   .top-nav {
-    width: 100%;
+    flex: 1 1 auto;
+    width: auto;
+    gap: 2px;
   }
 
   .top-nav a {
-    min-height: 34px;
-    padding: 7px 9px;
-    font-size: 13px;
+    min-height: 30px;
+    padding: 5px 7px;
+    font-size: 12px;
   }
 
   .page {
-    padding: 14px 12px 64px;
+    padding: 8px 10px 56px;
   }
 
   .editorial-hero {
-    min-height: 460px;
-    border-radius: 24px;
+    min-height: 0;
+    border-radius: 20px;
   }
 
   .editorial-hero::after {
@@ -1144,27 +1161,40 @@ button:hover,
   }
 
   .hero-overlay {
-    gap: 12px;
-    padding: 20px;
+    gap: 7px;
+    min-height: 280px;
+    padding: 14px;
   }
 
   .hero-overlay h1 {
-    font-size: 36px;
+    max-width: 300px;
+    font-size: 28px;
   }
 
   .hero-overlay p:not(.eyebrow) {
-    font-size: 15px;
+    max-width: 310px;
+    font-size: 13px;
+    line-height: 1.35;
   }
 
   .hero-search-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  .hero-search-form input {
+    grid-column: 1 / -1;
   }
 
   .hero-search-form input,
   .hero-search-form button,
   .hero-search-form .button-secondary {
-    min-height: 44px;
+    min-height: 38px;
+  }
+
+  .feature-grid {
+    gap: 12px;
+    margin-top: 14px;
   }
 
   .day-card,
@@ -1204,7 +1234,7 @@ button:hover,
   }
 
   .content-section {
-    margin-top: 26px;
+    margin-top: 22px;
   }
 
   .section-heading,
@@ -1232,6 +1262,31 @@ button:hover,
     grid-template-columns: 1fr;
   }
 
+  .featured-card {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    min-height: 104px;
+  }
+
+  .featured-media {
+    width: 92px;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+    border-radius: 18px 0 0 18px;
+  }
+
+  .featured-media span {
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  .featured-card-body {
+    align-content: center;
+    gap: 7px;
+    padding: 10px;
+  }
+
   .result-card {
     grid-template-columns: 88px minmax(0, 1fr);
     gap: 11px;
@@ -1253,7 +1308,7 @@ button:hover,
   }
 
   .featured-card h3 {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .tags {
@@ -1332,8 +1387,13 @@ button:hover,
   }
 
   .top-nav a {
-    padding-inline: 8px;
+    padding-inline: 6px;
     font-size: 12px;
+  }
+
+  .hero-overlay {
+    min-height: 268px;
+    padding: 12px;
   }
 
   .hero-overlay h1,
@@ -1341,7 +1401,13 @@ button:hover,
   .page-hero h1,
   .list-hero h1,
   .detail-summary h1 {
-    font-size: 29px;
+    font-size: 28px;
+  }
+
+  .hero-search-form input,
+  .hero-search-form button,
+  .hero-search-form .button-secondary {
+    min-height: 36px;
   }
 
   .classic-strip,
@@ -1351,6 +1417,19 @@ button:hover,
 
   .result-card {
     grid-template-columns: 78px minmax(0, 1fr);
+  }
+
+  .featured-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+    min-height: 94px;
+  }
+
+  .featured-media {
+    width: 82px;
+  }
+
+  .featured-media span {
+    font-size: 13px;
   }
 
   .result-media {
