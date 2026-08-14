@@ -480,24 +480,36 @@ def ranked_recipes_for_ingredient_list(db: Session, list_id: int, limit: int = 1
     selected_items = selected["alcohol"] | selected["ingredient"]
     if not selected_items:
         return []
-    ranked: list[tuple[int, int, float, dict]] = []
+    ranked: list[tuple[int, int, float, float, int, dict]] = []
     for row in _decorated_active_recipe_rows(db):
         required = row["required_labels"]
         if not required:
             continue
-        missing = sorted(required - selected_items)
         matched = len(required & selected_items)
         if matched == 0:
             continue
-        missing_count = len(missing)
-        row = _copy_decorated_result(row)
+        missing_count = len(required) - matched
+        group = missing_count if missing_count <= 2 else 3
+        ranked.append(
+            (
+                group,
+                -matched,
+                -_popularity_score(row),
+                -(row.get("quality_score") or 0),
+                missing_count,
+                row,
+            )
+        )
+    ranked.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+    results = []
+    for *_score, missing_count, cached_row in ranked[:limit]:
+        row = _copy_decorated_result(cached_row)
+        missing = sorted(row["required_labels"] - selected_items)
         row["availability_status"] = _availability_status(missing_count)
         row["missing_items"] = [display_item_name(item) for item in missing[:6]]
         row["missing_count"] = missing_count
-        group = missing_count if missing_count <= 2 else 3
-        ranked.append((group, -matched, -_popularity_score(row), row))
-    ranked.sort(key=lambda item: (item[0], item[1], item[2], -(item[3].get("quality_score") or 0)))
-    return [row for *_rest, row in ranked[:limit]]
+        results.append(row)
+    return results
 
 
 def cocktail_of_the_day(db: Session, day: date | None = None) -> dict | None:
