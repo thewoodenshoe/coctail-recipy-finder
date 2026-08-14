@@ -80,6 +80,9 @@ def upsert_raw_post_from_ingested(
             raw_json=json.dumps(raw_payload, ensure_ascii=True),
             raw_caption_text=caption_text,
             raw_hashtags_json=json.dumps(_hashtags(caption_text), ensure_ascii=True),
+            raw_view_count=ingested.raw_view_count,
+            raw_like_count=ingested.raw_like_count,
+            raw_comment_count=ingested.raw_comment_count,
             raw_thumbnail_url=ingested.raw_thumbnail_url,
             local_image_path=ingested.local_image_path,
             image_capture_status=ingested.image_capture_status,
@@ -100,6 +103,17 @@ def upsert_raw_post_from_ingested(
         raw_post.raw_json = json.dumps(raw_payload, ensure_ascii=True)
         raw_post.raw_caption_text = caption_text
         raw_post.raw_hashtags_json = json.dumps(_hashtags(caption_text), ensure_ascii=True)
+        raw_post.raw_view_count = (
+            ingested.raw_view_count if ingested.raw_view_count is not None else raw_post.raw_view_count
+        )
+        raw_post.raw_like_count = (
+            ingested.raw_like_count if ingested.raw_like_count is not None else raw_post.raw_like_count
+        )
+        raw_post.raw_comment_count = (
+            ingested.raw_comment_count
+            if ingested.raw_comment_count is not None
+            else raw_post.raw_comment_count
+        )
         raw_post.raw_thumbnail_url = ingested.raw_thumbnail_url or raw_post.raw_thumbnail_url
         raw_post.local_image_path = ingested.local_image_path or raw_post.local_image_path
         raw_post.image_capture_status = ingested.image_capture_status or raw_post.image_capture_status

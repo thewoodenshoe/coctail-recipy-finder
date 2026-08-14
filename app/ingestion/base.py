@@ -19,6 +19,9 @@ class IngestedPost:
     image_capture_error: str | None = None
     posted_at: datetime | None = None
     fetch_seconds: float | None = None
+    raw_view_count: int | None = None
+    raw_like_count: int | None = None
+    raw_comment_count: int | None = None
 
 
 @dataclass(frozen=True)

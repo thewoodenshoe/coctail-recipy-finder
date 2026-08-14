@@ -158,6 +158,10 @@ def import_instagram_jsonl_to_gold(
                 external_post_id=str(row.get("post_id") or "").strip() or None,
                 raw_thumbnail_url=str(row.get("image_url") or "").strip() or None,
                 image_capture_status="metadata_only" if row.get("image_url") else "missing_public_image_metadata",
+                posted_at=_jsonl_posted_at(row),
+                raw_view_count=_jsonl_int(row.get("view_count")),
+                raw_like_count=_jsonl_int(row.get("like_count")),
+                raw_comment_count=_jsonl_int(row.get("comment_count")),
             )
             upsert_raw_post_from_ingested(
                 session,
@@ -199,6 +203,36 @@ def _jsonl_source_url(row: dict) -> str:
         if value:
             return value
     return ""
+
+
+def _jsonl_int(value: object) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(str(value).replace(",", "").strip())
+    except ValueError:
+        return None
+
+
+def _jsonl_posted_at(row: dict) -> datetime | None:
+    raw_value = str(row.get("posted_at") or "").strip()
+    if raw_value:
+        try:
+            parsed = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = None
+        if parsed is not None:
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    posted_at_label = str(row.get("posted_at_label") or "").strip()
+    if not posted_at_label:
+        return None
+    for date_format in ("%B %d, %Y", "%b %d, %Y"):
+        try:
+            parsed = datetime.strptime(posted_at_label, date_format)
+        except ValueError:
+            continue
+        return parsed.replace(tzinfo=timezone.utc)
+    return None
 
 
 def _clear_creator_pipeline_data(session: Session, creator_handle: str) -> None:

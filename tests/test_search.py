@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from sqlalchemy import select
+
 from app.main import _display_title, _format_count
 from app.gold import search_gold_recipes
+from app.models import RawPost
 from app.services import import_caption_to_gold, import_instagram_jsonl_to_gold
 
 
@@ -42,7 +45,7 @@ def test_bulk_jsonl_import_writes_searchable_gold(db_session, tmp_path):
     path = tmp_path / "captured.jsonl"
     path.write_text(
         """
-{"creator_handle":"thirstywhale_","canonical_url":"https://www.instagram.com/reel/DY5bg_fRGLt/","post_id":"DY5bg_fRGLt","ok":true,"caption_text":"ESPRESSO TINI\\n1.5 oz vodka\\n1.5 oz espresso\\n0.5 oz coffee liqueur\\nShake hard.","image_url":"https://cdn.example/thumb.jpg"}
+{"creator_handle":"thirstywhale_","canonical_url":"https://www.instagram.com/reel/DY5bg_fRGLt/","post_id":"DY5bg_fRGLt","ok":true,"caption_text":"ESPRESSO TINI\\n1.5 oz vodka\\n1.5 oz espresso\\n0.5 oz coffee liqueur\\nShake hard.","image_url":"https://cdn.example/thumb.jpg","like_count":1234,"comment_count":56,"posted_at_label":"August 3, 2026"}
 {"creator_handle":"thirstywhale_","canonical_url":"https://www.instagram.com/p/no-recipe/","post_id":"no-recipe","ok":true,"caption_text":"Quick cold and rainy camp weekend."}
 """.strip()
         + "\n"
@@ -56,6 +59,11 @@ def test_bulk_jsonl_import_writes_searchable_gold(db_session, tmp_path):
     assert result.not_recipe == 1
     results = search_gold_recipes(db_session, "espresso", creator_handle="thirstywhale_")
     assert [row["drink_title"] for row in results] == ["Espresso Tini"]
+    assert results[0]["like_count"] == 1234
+    raw_post = db_session.scalar(select(RawPost).where(RawPost.external_post_id == "DY5bg_fRGLt"))
+    assert raw_post is not None
+    assert raw_post.raw_comment_count == 56
+    assert raw_post.posted_at is not None
 
 
 def test_bulk_jsonl_import_can_replace_creator_data(db_session, tmp_path):
