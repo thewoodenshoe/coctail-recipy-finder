@@ -796,7 +796,7 @@ def _toggle_sort_url(request: Request, key: str) -> str:
 
 
 def _request_query_path(request: Request) -> str:
-    return "/search" if request.url.path == "/search" else "/"
+    return "/search"
 
 
 def _query_path(items: list[tuple[str, str]], path: str = "/") -> str:
