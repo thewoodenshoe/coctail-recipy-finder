@@ -14,7 +14,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR, get_settings
-from app.db import get_db, init_database
+from app.db import SessionLocal, get_db, init_database
 from app.ingredient_lists import (
     create_ingredient_list,
     delete_ingredient_list,
@@ -32,12 +32,40 @@ from app.models import Creator, GoldRecipe, RawPost
 app = FastAPI(title="Cocktail Recipe Finder")
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 get_settings().media_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "app" / "static")), name="static")
-app.mount("/media", StaticFiles(directory=str(get_settings().media_dir)), name="media")
+
+
+class CacheControlStaticFiles(StaticFiles):
+    def __init__(self, *args, cache_control: str, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cache_control = cache_control
+
+    def file_response(self, *args, **kwargs) -> Response:
+        response = super().file_response(*args, **kwargs)
+        response.headers.setdefault("Cache-Control", self.cache_control)
+        return response
+
+
+app.mount(
+    "/static",
+    CacheControlStaticFiles(
+        directory=str(BASE_DIR / "app" / "static"),
+        cache_control="public, max-age=31536000, immutable",
+    ),
+    name="static",
+)
+app.mount(
+    "/media",
+    CacheControlStaticFiles(
+        directory=str(get_settings().media_dir),
+        cache_control="public, max-age=604800",
+    ),
+    name="media",
+)
 
 @app.on_event("startup")
 def startup() -> None:
     init_database()
+    _prewarm_runtime_caches()
 
 
 @app.get("/")
@@ -144,7 +172,7 @@ def _search_response(
             "popular_recipes": popular_recipe_results(db, limit=8),
             "popular_classics": popular_classics(db),
             "featured_creators": featured_creators(db, limit=5),
-            "search_suggestions": search_suggestions(db),
+            "search_suggestions": search_suggestions(db, catalog),
         },
     )
 
@@ -363,6 +391,55 @@ def _decorate_result(row: dict) -> dict:
     return row
 
 
+ActiveRecipeRevisionKey = tuple[int, str, int, int, str]
+
+_ACTIVE_RECIPE_CACHE: dict[ActiveRecipeRevisionKey, tuple[dict, ...]] = {}
+_ACTIVE_RECIPE_CACHE_MAX_ENTRIES = 8
+
+
+def _decorated_active_recipe_rows(db: Session) -> list[dict]:
+    revision_key = _active_recipe_revision_key(db)
+    cached_rows = _ACTIVE_RECIPE_CACHE.get(revision_key)
+    if cached_rows is None:
+        cached_rows = tuple(_decorate_result(row) for row in _active_recipe_rows(db))
+        _ACTIVE_RECIPE_CACHE[revision_key] = cached_rows
+        while len(_ACTIVE_RECIPE_CACHE) > _ACTIVE_RECIPE_CACHE_MAX_ENTRIES:
+            _ACTIVE_RECIPE_CACHE.pop(next(iter(_ACTIVE_RECIPE_CACHE)))
+    return [_copy_decorated_result(row) for row in cached_rows]
+
+
+def _copy_decorated_result(row: dict) -> dict:
+    copied = row.copy()
+    copied["ingredients"] = list(row.get("ingredients") or [])
+    copied["base_spirits"] = list(row.get("base_spirits") or [])
+    copied["ingredient_labels"] = set(row.get("ingredient_labels") or set())
+    copied["alcohol_labels"] = set(row.get("alcohol_labels") or set())
+    return copied
+
+
+def _active_recipe_revision_key(db: Session) -> ActiveRecipeRevisionKey:
+    count, max_id, max_transformed_at = db.execute(
+        text(
+            """
+            SELECT
+                count(*) AS active_count,
+                COALESCE(max(id), 0) AS max_id,
+                COALESCE(max(transformed_at), '') AS max_transformed_at
+            FROM gold_recipes
+            WHERE status = 'active'
+            """
+        )
+    ).one()
+    bind = db.get_bind()
+    return (
+        id(bind),
+        str(bind.url),
+        int(count or 0),
+        int(max_id or 0),
+        str(max_transformed_at or ""),
+    )
+
+
 def ranked_search_results(
     db: Session,
     query: str,
@@ -372,9 +449,8 @@ def ranked_search_results(
     limit: int = 60,
 ) -> list[dict]:
     tokens = [token.lower() for token in query.split() if token.strip()]
-    rows = [_decorate_result(row) for row in _active_recipe_rows(db)]
     ranked: list[tuple[float, dict]] = []
-    for row in rows:
+    for row in _decorated_active_recipe_rows(db):
         if creator_handle and row.get("creator_handle") != creator_handle:
             continue
         if not set(alcohol_filters).issubset(row["alcohol_labels"]):
@@ -397,7 +473,7 @@ def ranked_recipes_for_ingredient_list(db: Session, list_id: int, limit: int = 1
     if not selected_items:
         return []
     ranked: list[tuple[int, int, float, dict]] = []
-    for row in [_decorate_result(row) for row in _active_recipe_rows(db)]:
+    for row in _decorated_active_recipe_rows(db):
         required_alcohol = row["alcohol_labels"]
         required_ingredients = row["ingredient_labels"]
         required = required_alcohol | required_ingredients
@@ -437,7 +513,7 @@ def random_recipe(db: Session, offset: int | None = None) -> dict | None:
 
 
 def popular_recipe_results(db: Session, limit: int = 8) -> list[dict]:
-    return [_decorate_result(row) for row in _active_recipe_rows(db, limit=limit)]
+    return _decorated_active_recipe_rows(db)[:limit]
 
 
 def featured_creators(db: Session, limit: int = 5) -> list[dict[str, object]]:
@@ -451,14 +527,15 @@ def featured_creators(db: Session, limit: int = 5) -> list[dict[str, object]]:
         ),
         reverse=True,
     )
+    recipe_rows = _decorated_active_recipe_rows(db)
     cards: list[dict[str, object]] = []
     for creator in ranked[:limit]:
-        top_recipe_rows = _active_recipe_rows(db, creator_handle=creator.handle, limit=1)
+        top_recipe = next((row for row in recipe_rows if row.get("creator_handle") == creator.handle), None)
         cards.append(
             {
                 "creator": creator,
                 "active_recipes": stats.get(creator.handle, {}).get("active_recipes", 0),
-                "top_recipe": _decorate_result(top_recipe_rows[0]) if top_recipe_rows else None,
+                "top_recipe": top_recipe,
             }
         )
     return cards
@@ -487,7 +564,7 @@ def related_recipes(db: Session, recipe: GoldRecipe, limit: int = 6) -> list[dic
     if not target_labels:
         return []
     ranked: list[tuple[int, float, dict]] = []
-    for row in [_decorate_result(row) for row in _active_recipe_rows(db)]:
+    for row in _decorated_active_recipe_rows(db):
         if row["id"] == recipe.id:
             continue
         labels = row["alcohol_labels"] | row["ingredient_labels"]
@@ -499,44 +576,40 @@ def related_recipes(db: Session, recipe: GoldRecipe, limit: int = 6) -> list[dic
     return [row for *_score, row in ranked[:limit]]
 
 
-def search_suggestions(db: Session, limit: int = 80) -> list[str]:
+def search_suggestions(db: Session, catalog: dict | None = None, limit: int = 80) -> list[str]:
     suggestions: list[str] = []
-    rows = db.execute(
-        text(
-            """
-            SELECT drink_title
-            FROM gold_recipes
-            WHERE status = 'active' AND drink_title IS NOT NULL AND trim(drink_title) != ''
-            ORDER BY COALESCE(view_count, like_count, 0) DESC, COALESCE(quality_score, 0) DESC, id DESC
-            LIMIT :limit
-            """
-        ),
-        {"limit": limit},
-    ).scalars().all()
-    for value in rows:
-        clean_value = " ".join(str(value).split())
+    for row in _decorated_active_recipe_rows(db):
+        clean_value = " ".join(str(row.get("drink_name") or "").split())
         if clean_value and clean_value not in suggestions:
             suggestions.append(clean_value)
+        if len(suggestions) >= limit:
+            break
     creators = db.scalars(select(Creator.handle).order_by(Creator.handle)).all()
     for creator in creators:
         label = f"@{creator}"
         if label not in suggestions:
             suggestions.append(label)
-    for option in ingredient_catalog(db)["alcohol"][:20]:
+    alcohol_options = (catalog or ingredient_catalog(db))["alcohol"]
+    for option in alcohol_options[:20]:
         if option.label not in suggestions:
             suggestions.append(option.label)
     return suggestions[:limit]
 
 
+def _prewarm_runtime_caches() -> None:
+    with SessionLocal() as db:
+        catalog = ingredient_catalog(db)
+        _decorated_active_recipe_rows(db)
+        search_suggestions(db, catalog)
+
+
 def creator_recipe_sections(db: Session, per_creator: int = 8) -> tuple[list[dict], str]:
     metric_title = _creator_metric_title(db)
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
+    recipe_rows = _decorated_active_recipe_rows(db)
     rows = []
     for creator in creators:
-        recipes = [
-            _decorate_result(row)
-            for row in _active_recipe_rows(db, creator_handle=creator.handle, limit=per_creator)
-        ]
+        recipes = [row for row in recipe_rows if row.get("creator_handle") == creator.handle][:per_creator]
         if recipes:
             rows.append({"creator": creator, "recipes": recipes})
     return rows, metric_title

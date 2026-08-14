@@ -81,6 +81,12 @@ class IngredientOption:
     item_type: str
 
 
+CatalogRevisionKey = tuple[int, str, int, int, str]
+
+_CATALOG_CACHE: dict[CatalogRevisionKey, dict[str, list[IngredientOption]]] = {}
+_CATALOG_CACHE_MAX_ENTRIES = 8
+
+
 def list_ingredient_lists(session: Session) -> list[IngredientList]:
     return list(session.scalars(select(IngredientList).order_by(IngredientList.name, IngredientList.id)).all())
 
@@ -135,6 +141,11 @@ def ingredient_list_items(session: Session, list_id: int | None) -> dict[str, se
 
 
 def ingredient_catalog(session: Session) -> dict[str, list[IngredientOption]]:
+    revision_key = _catalog_revision_key(session)
+    cached_catalog = _CATALOG_CACHE.get(revision_key)
+    if cached_catalog is not None:
+        return cached_catalog
+
     alcohol_counts: Counter[str] = Counter()
     ingredient_counts: Counter[str] = Counter()
     rows = session.execute(
@@ -170,10 +181,14 @@ def ingredient_catalog(session: Session) -> dict[str, list[IngredientOption]]:
     for name, _label, _patterns in SEEDED_ALCOHOL_OPTIONS:
         alcohol_counts.setdefault(name, 0)
 
-    return {
+    catalog = {
         "alcohol": _options_from_counts(alcohol_counts, "alcohol"),
         "ingredient": _options_from_counts(ingredient_counts, "ingredient"),
     }
+    _CATALOG_CACHE[revision_key] = catalog
+    while len(_CATALOG_CACHE) > _CATALOG_CACHE_MAX_ENTRIES:
+        _CATALOG_CACHE.pop(next(iter(_CATALOG_CACHE)))
+    return catalog
 
 
 def selected_ingredient_list(session: Session, list_id: int | None) -> IngredientList | None:
@@ -261,3 +276,26 @@ def _json_list(value: str | None) -> list[str]:
     if not isinstance(parsed, list):
         return []
     return [str(item).strip().lower() for item in parsed if str(item).strip()]
+
+
+def _catalog_revision_key(session: Session) -> CatalogRevisionKey:
+    count, max_id, max_transformed_at = session.execute(
+        text(
+            """
+            SELECT
+                count(*) AS active_count,
+                COALESCE(max(id), 0) AS max_id,
+                COALESCE(max(transformed_at), '') AS max_transformed_at
+            FROM gold_recipes
+            WHERE status = 'active'
+            """
+        )
+    ).one()
+    bind = session.get_bind()
+    return (
+        id(bind),
+        str(bind.url),
+        int(count or 0),
+        int(max_id or 0),
+        str(max_transformed_at or ""),
+    )

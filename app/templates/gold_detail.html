@@ -5,7 +5,7 @@
     <header class="detail-hero">
       <div class="detail-media">
         {% if image_url %}
-          <img src="{{ image_url }}" alt="{{ recipe.drink_title or 'Cocktail post image' }}">
+          <img src="{{ image_url }}" alt="{{ recipe.drink_title or 'Cocktail post image' }}" fetchpriority="high" decoding="async">
         {% else %}
           <span>{{ base_spirits[0] if base_spirits else "Cocktail" }}</span>
         {% endif %}

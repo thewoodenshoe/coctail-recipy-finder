@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{% if page_mode == "search" %}Search{% else %}Discover{% endif %} - Cocktail Finder{% endblock %}
+{% block head_extra %}
+  {% if page_mode == "discover" %}
+    <link
+      rel="preload"
+      as="image"
+      href="/static/cocktail-finder-960.jpg"
+      imagesrcset="/static/cocktail-finder-960.jpg 960w, /static/cocktail-finder-1440.jpg 1440w, /static/cocktail-finder.jpg 2172w"
+      imagesizes="(max-width: 700px) calc(100vw - 40px), (max-width: 1100px) 46vw, 620px"
+    >
+  {% endif %}
+{% endblock %}
 {% block content %}
   {% set search_action = "/search" %}
   <datalist id="search-suggestions">
@@ -24,7 +35,16 @@
         </form>
       </div>
       <figure class="refined-hero-media">
-        <img src="/static/cocktail-finder.jpg" alt="Cocktail Finder bar scene with cocktails, citrus, and gold lettering">
+        <img
+          src="/static/cocktail-finder-960.jpg"
+          srcset="/static/cocktail-finder-960.jpg 960w, /static/cocktail-finder-1440.jpg 1440w, /static/cocktail-finder.jpg 2172w"
+          sizes="(max-width: 700px) calc(100vw - 40px), (max-width: 1100px) 46vw, 620px"
+          width="2172"
+          height="724"
+          fetchpriority="high"
+          decoding="async"
+          alt="Cocktail Finder bar scene with cocktails, citrus, and gold lettering"
+        >
       </figure>
     </section>
 
