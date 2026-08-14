@@ -381,6 +381,7 @@ def _decorate_result(row: dict) -> dict:
     row["base_spirits"] = [spirit for spirit in base_spirits if spirit]
     row["ingredient_labels"] = ingredient_labels
     row["alcohol_labels"] = alcohol_labels | {str(spirit).lower() for spirit in row["base_spirits"]}
+    row["required_labels"] = row["alcohol_labels"] | row["ingredient_labels"]
     row["drink_name"] = _display_title(row, row["ingredients"])
     row["detail_path"] = f"/gold/{row['id']}"
     row["image_url"] = _media_url(row.get("local_image_path"))
@@ -388,6 +389,10 @@ def _decorate_result(row: dict) -> dict:
     row["show_garnish"] = bool(row.get("garnish") and row.get("garnish") != row.get("method"))
     popularity = row.get("view_count") or row.get("like_count") or row.get("popularity_count")
     row["popularity_label"] = _format_count(popularity)
+    row["_search_title"] = str(row.get("drink_name") or "").lower()
+    row["_search_creator"] = str(row.get("creator_handle") or "").lower()
+    row["_search_bases"] = " ".join(row.get("base_spirits") or []).lower()
+    row["_search_ingredients"] = " ".join([*row["ingredients"], *row["ingredient_labels"]]).lower()
     return row
 
 
@@ -397,7 +402,7 @@ _ACTIVE_RECIPE_CACHE: dict[ActiveRecipeRevisionKey, tuple[dict, ...]] = {}
 _ACTIVE_RECIPE_CACHE_MAX_ENTRIES = 8
 
 
-def _decorated_active_recipe_rows(db: Session) -> list[dict]:
+def _decorated_active_recipe_rows(db: Session) -> tuple[dict, ...]:
     revision_key = _active_recipe_revision_key(db)
     cached_rows = _ACTIVE_RECIPE_CACHE.get(revision_key)
     if cached_rows is None:
@@ -405,7 +410,7 @@ def _decorated_active_recipe_rows(db: Session) -> list[dict]:
         _ACTIVE_RECIPE_CACHE[revision_key] = cached_rows
         while len(_ACTIVE_RECIPE_CACHE) > _ACTIVE_RECIPE_CACHE_MAX_ENTRIES:
             _ACTIVE_RECIPE_CACHE.pop(next(iter(_ACTIVE_RECIPE_CACHE)))
-    return [_copy_decorated_result(row) for row in cached_rows]
+    return cached_rows
 
 
 def _copy_decorated_result(row: dict) -> dict:
@@ -414,6 +419,7 @@ def _copy_decorated_result(row: dict) -> dict:
     copied["base_spirits"] = list(row.get("base_spirits") or [])
     copied["ingredient_labels"] = set(row.get("ingredient_labels") or set())
     copied["alcohol_labels"] = set(row.get("alcohol_labels") or set())
+    copied["required_labels"] = set(row.get("required_labels") or set())
     return copied
 
 
@@ -449,13 +455,15 @@ def ranked_search_results(
     limit: int = 60,
 ) -> list[dict]:
     tokens = [token.lower() for token in query.split() if token.strip()]
+    alcohol_filter_set = set(alcohol_filters)
+    ingredient_filter_set = set(ingredient_filters)
     ranked: list[tuple[float, dict]] = []
     for row in _decorated_active_recipe_rows(db):
         if creator_handle and row.get("creator_handle") != creator_handle:
             continue
-        if not set(alcohol_filters).issubset(row["alcohol_labels"]):
+        if not alcohol_filter_set.issubset(row["alcohol_labels"]):
             continue
-        if not set(ingredient_filters).issubset(row["ingredient_labels"]):
+        if not ingredient_filter_set.issubset(row["ingredient_labels"]):
             continue
         score = _search_score(row, tokens, query)
         if tokens and score <= 0:
@@ -474,9 +482,7 @@ def ranked_recipes_for_ingredient_list(db: Session, list_id: int, limit: int = 1
         return []
     ranked: list[tuple[int, int, float, dict]] = []
     for row in _decorated_active_recipe_rows(db):
-        required_alcohol = row["alcohol_labels"]
-        required_ingredients = row["ingredient_labels"]
-        required = required_alcohol | required_ingredients
+        required = row["required_labels"]
         if not required:
             continue
         missing = sorted(required - selected_items)
@@ -484,6 +490,7 @@ def ranked_recipes_for_ingredient_list(db: Session, list_id: int, limit: int = 1
         if matched == 0:
             continue
         missing_count = len(missing)
+        row = _copy_decorated_result(row)
         row["availability_status"] = _availability_status(missing_count)
         row["missing_items"] = [display_item_name(item) for item in missing[:6]]
         row["missing_count"] = missing_count
@@ -697,10 +704,10 @@ def _active_recipe_by_offset(db: Session, offset: int) -> dict | None:
 def _search_score(row: dict, tokens: list[str], raw_query: str) -> float:
     if not tokens:
         return 1
-    title = str(row.get("drink_name") or "").lower()
-    creator = str(row.get("creator_handle") or "").lower()
-    bases = " ".join(row.get("base_spirits") or []).lower()
-    ingredients = " ".join([*row.get("ingredients", []), *row.get("ingredient_labels", [])]).lower()
+    title = row.get("_search_title") or str(row.get("drink_name") or "").lower()
+    creator = row.get("_search_creator") or str(row.get("creator_handle") or "").lower()
+    bases = row.get("_search_bases") or " ".join(row.get("base_spirits") or []).lower()
+    ingredients = row.get("_search_ingredients") or " ".join([*row.get("ingredients", []), *row.get("ingredient_labels", [])]).lower()
     raw_query = raw_query.lower().strip()
     score = 0.0
     if raw_query and raw_query in title:
