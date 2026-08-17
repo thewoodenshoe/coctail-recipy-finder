@@ -90,6 +90,36 @@ def test_search_query_submission_renders_results_state(web_db_session):
     assert 'value="apple vodka"' in response.text
 
 
+def test_all_pages_publish_site_wide_search_privacy_directives(web_db_session):
+    client = _client(web_db_session)
+    try:
+        homepage = client.get("/")
+        filtered_search = client.get("/search?alcohol=gin&ingredient=lemon+juice")
+        missing_page = client.get("/does-not-exist")
+    finally:
+        _clear_overrides()
+
+    for response in (homepage, filtered_search, missing_page):
+        assert response.headers["x-robots-tag"] == main.SEARCH_PRIVACY_DIRECTIVE
+    assert (
+        '<meta name="robots" '
+        'content="noindex, nofollow, noarchive, nosnippet, noimageindex">'
+        in homepage.text
+    )
+
+
+def test_robots_allows_recrawl_so_google_can_process_noindex(web_db_session):
+    client = _client(web_db_session)
+    try:
+        response = client.get("/robots.txt")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    assert response.text == "User-agent: *\nAllow: /\n"
+    assert response.headers["x-robots-tag"] == main.SEARCH_PRIVACY_DIRECTIVE
+
+
 def test_filter_chip_selection_deselection_and_clear_all(web_db_session):
     _seed_recipe(web_db_session, "Gin Sour", "2 oz gin\n1 oz lemon juice\nShake hard.", "gin-sour")
     client = _client(web_db_session)

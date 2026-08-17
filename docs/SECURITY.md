@@ -35,6 +35,19 @@ If deployed on a public IP:
 - Avoid exposing database files.
 - Consider basic auth or IP allowlisting if the app is not meant for public use.
 
+## Search Visibility
+
+The public application is personal and must not appear in search results.
+Every response publishes a site-wide `X-Robots-Tag` noindex directive, and
+HTML pages repeat that policy in a robots meta tag. `robots.txt` intentionally
+allows crawling while search engines process those removal directives; blocking
+crawlers there would prevent already-known URLs from being recrawled and
+deindexed.
+
+Do not remove or weaken the noindex policy when changing templates or routes.
+If the site is ever made indexable, treat that as an explicit product decision
+with a migration plan for the existing query/filter URL surface.
+
 ## Basic Hardening
 
 Recommended MVP hardening:

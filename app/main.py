@@ -33,6 +33,15 @@ app = FastAPI(title="Cocktail Recipe Finder")
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 get_settings().media_dir.mkdir(parents=True, exist_ok=True)
 
+SEARCH_PRIVACY_DIRECTIVE = "noindex, nofollow, noarchive, nosnippet, noimageindex"
+
+
+@app.middleware("http")
+async def keep_personal_site_out_of_search(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Robots-Tag"] = SEARCH_PRIVACY_DIRECTIVE
+    return response
+
 
 class CacheControlStaticFiles(StaticFiles):
     def __init__(self, *args, cache_control: str, **kwargs):
@@ -235,6 +244,18 @@ def _ingredient_list_response(request: Request, db: Session, list_id: int | None
 @app.head("/")
 def home_head():
     return Response(status_code=200)
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots_txt():
+    # Crawlers must be able to fetch pages while the site-wide noindex is being
+    # processed. Disallowing here would prevent Google from seeing the removal
+    # directive on URLs it already knows about.
+    return Response(
+        "User-agent: *\nAllow: /\n",
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @app.get("/healthz")
