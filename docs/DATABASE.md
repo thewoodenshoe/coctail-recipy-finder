@@ -107,6 +107,13 @@ Indexed content:
 
 ## Data Principles
 
+Production SQLite runs in WAL mode with a 30-second busy timeout. The nightly
+creator sync may hold a write transaction while the public app is serving; WAL
+keeps those public reads available instead of turning the overlap into
+`database is locked` 500 responses. Connection setup also enables foreign-key
+checks and uses `synchronous=NORMAL`, the standard durability/performance
+balance for WAL mode.
+
 - Preserve raw captured text.
 - Treat extraction and gold records as rebuildable derived data.
 - Store display values and normalized values where useful.
