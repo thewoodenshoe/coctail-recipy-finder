@@ -3,7 +3,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.creators import load_creator_config, normalize_handle
+from app.ingestion.base import IngestionResult
 from app.services import sync_creators_from_config
+
+
+class EmptyProvider:
+    def backfill(self, _creator):
+        return IngestionResult(posts=[], message="no posts")
+
+    def incremental(self, _creator):
+        return IngestionResult(posts=[], message="no posts")
 
 
 def test_normalize_handle_accepts_url_and_at_prefix():
@@ -36,7 +45,7 @@ creators:
     active: true
 """
     )
-    actions = sync_creators_from_config(db_session, path)
+    actions = sync_creators_from_config(db_session, path, provider=EmptyProvider())
     db_session.commit()
     assert actions[0].action == "backfill"
     assert actions[0].status == "backfill_no_posts"

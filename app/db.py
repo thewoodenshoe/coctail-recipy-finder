@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
@@ -23,8 +23,25 @@ def _ensure_sqlite_parent(database_url: str) -> None:
 def make_engine(database_url: str | None = None) -> Engine:
     url = database_url or get_settings().database_url
     _ensure_sqlite_parent(url)
-    connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    return create_engine(url, connect_args=connect_args, future=True)
+    is_sqlite = url.startswith("sqlite")
+    connect_args = {
+        "check_same_thread": False,
+        "timeout": 30,
+    } if is_sqlite else {}
+    db_engine = create_engine(url, connect_args=connect_args, future=True)
+    if is_sqlite:
+        event.listen(db_engine, "connect", _configure_sqlite_connection)
+    return db_engine
+
+
+def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+    finally:
+        cursor.close()
 
 
 engine = make_engine()
@@ -32,10 +49,18 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 
 
 def init_database(db_engine: Engine = engine) -> None:
+    enable_sqlite_wal(db_engine)
     Base.metadata.create_all(bind=db_engine)
     add_raw_post_media_columns(db_engine)
     drop_obsolete_sqlite_tables(db_engine)
     create_gold_search_index(db_engine)
+
+
+def enable_sqlite_wal(db_engine: Engine) -> None:
+    if db_engine.dialect.name != "sqlite":
+        return
+    with db_engine.connect() as connection:
+        connection.exec_driver_sql("PRAGMA journal_mode=WAL")
 
 
 def add_raw_post_media_columns(db_engine: Engine) -> None:
