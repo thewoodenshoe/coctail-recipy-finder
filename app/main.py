@@ -151,8 +151,9 @@ def _search_response(
     if request.query_params.get("ingredient_sort") == "alpha":
         more_ingredients = sorted(more_ingredients, key=lambda option: option.label)
     return templates.TemplateResponse(
-        "search.html",
-        {
+        request=request,
+        name="search.html",
+        context={
             "request": request,
             "q": q,
             "creator_filter": creator,
@@ -227,8 +228,9 @@ def _ingredient_list_response(request: Request, db: Session, list_id: int | None
     selected_items = ingredient_list_items(db, selected.id if selected else None)
     catalog = ingredient_catalog(db)
     return templates.TemplateResponse(
-        "my_ingredient_list.html",
-        {
+        request=request,
+        name="my_ingredient_list.html",
+        context={
             "request": request,
             "ingredient_lists": saved_lists,
             "selected_ingredient_list": selected,
@@ -272,8 +274,9 @@ def healthz_head():
 def creators_page(request: Request, db: Session = Depends(get_db)):
     creators = db.scalars(select(Creator).order_by(Creator.handle)).all()
     return templates.TemplateResponse(
-        "creators.html",
-        {"request": request, "creators": creators, "creator_stats": _creator_stats(db)},
+        request=request,
+        name="creators.html",
+        context={"request": request, "creators": creators, "creator_stats": _creator_stats(db)},
     )
 
 
@@ -287,8 +290,9 @@ def popular_page(request: Request, db: Session = Depends(get_db)):
 def _popular_response(request: Request, db: Session):
     creator_rows, creator_metric_title = creator_recipe_sections(db, per_creator=10)
     return templates.TemplateResponse(
-        "popular.html",
-        {
+        request=request,
+        name="popular.html",
+        context={
             "request": request,
             "creator_rows": creator_rows,
             "popular_metric_note": _popular_metric_note(creator_metric_title),
@@ -344,7 +348,12 @@ def delete_my_ingredient_list(list_id: int, db: Session = Depends(get_db)):
 def gold_detail(gold_id: int, request: Request, db: Session = Depends(get_db)):
     recipe = db.scalar(select(GoldRecipe).where(GoldRecipe.id == gold_id))
     if recipe is None:
-        return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
+        return templates.TemplateResponse(
+            request=request,
+            name="404.html",
+            context={"request": request},
+            status_code=404,
+        )
     raw_post = db.scalar(select(RawPost).where(RawPost.id == recipe.raw_post_id))
     creator = db.scalar(select(Creator).where(Creator.handle == recipe.creator_handle))
     ingredients = []
@@ -358,8 +367,9 @@ def gold_detail(gold_id: int, request: Request, db: Session = Depends(get_db)):
     except json.JSONDecodeError:
         base_spirits = []
     return templates.TemplateResponse(
-        "gold_detail.html",
-        {
+        request=request,
+        name="gold_detail.html",
+        context={
             "request": request,
             "recipe": recipe,
             "image_url": _media_url(raw_post.local_image_path if raw_post else None),

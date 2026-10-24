@@ -1,0 +1,3 @@
+# Kept separate from production dependencies. Pinning makes CI's security
+# database client reproducible while pip-audit resolves requirements.txt.
+pip-audit==2.10.1
